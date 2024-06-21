@@ -145,10 +145,10 @@ if __name__ == "__main__":
                 args=args,
                 search_filter=override_config.get("test_filter"),
             )
-            aws_client.get_instances()
+            ec2_instances = aws_client.get_instances()
 
             # https://confluentinc.atlassian.net/wiki/spaces/~457145999/pages/3318745562/Cloud+Spend+Reduction+Proposal+AWS+Solutions+Engineering+Account
-            for instance in aws_client.instances:
+            for instance in ec2_instances:
                 state = instance["State"]["Name"]
                 instance_id = instance["InstanceId"]
 
