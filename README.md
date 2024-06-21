@@ -1,10 +1,10 @@
 # aws-cleanup
 
-Requirements:
- - Python3
- - Pip
- - Install required Python libs: `python3 -m pip install -r requirements.txt`
+## Requirements
+- [Python 3.8+](https://www.python.org/)
+- Install required Python libs: `python3 -m pip install -r requirements.txt`
 
+## Python Script
 ```
 python3 main.py --help
 usage: main.py [-h] [--config CONFIG] [--run-date RUN_DATE] [--dry-run] [--full] [--override-stop-date] [--debug]
