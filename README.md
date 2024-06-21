@@ -1,5 +1,9 @@
 # aws-cleanup
 
+Requirements:
+ - Python3
+ - Pip
+ - Install required Python libs: `python3 -m pip install -r requirements.txt`
 
 ```
 python3 main.py --help
