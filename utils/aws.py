@@ -32,7 +32,6 @@ class AWSInstance:
         ]
 
     def get_instances(self):
-        # instances = [reservation["Instances"] for reservation in ec2_client.describe_instances(Filters=justin_filter)["Reservations"]]
         instances = list()
         params = {
             "MaxResults": self._max_results,
