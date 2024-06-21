@@ -34,22 +34,19 @@ class AWSInstance:
     def get_instances(self):
         # instances = [reservation["Instances"] for reservation in ec2_client.describe_instances(Filters=justin_filter)["Reservations"]]
         instances = list()
-        describe_instances = self.client.describe_instances(
-            MaxResults=self._max_results,
-            Filters=self._search_filter,
-        )
+        params = {
+            "MaxResults": self._max_results,
+            "Filters": self._search_filter,
+        }
         while True:
+            describe_instances = self.client.describe_instances(**params)
             for reservation in describe_instances.get("Reservations", list()):
                 instances += reservation.get("Instances", list())
 
             # Pagination
             next_token = describe_instances.get("NextToken")
             if next_token:
-                describe_instances = self.client.describe_instances(
-                    MaxResults=self._max_results,
-                    Filters=self._search_filter,
-                    NextToken=next_token,
-                )
+                params["NextToken"] = next_token
             else:
                 break
 
