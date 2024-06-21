@@ -2,15 +2,24 @@ import boto3
 import logging
 
 
-class AWSRegions:
+class AWSInstance:
     def __init__(
         self,
-        service_name: str,
         region_name: str,
+        args=None,
+        max_results: int = 100,
+        service_name: str = "ec2",
+        search_filter: list = None,
+        notify_messages_config: dict = None,
     ) -> None:
-        self._service_name = service_name
+        self._args = args
         self._region_name = region_name
-        self.aws_client = boto3.client(
+        self._search_filter = search_filter
+        self._max_results = max_results
+        self._notify_messages_config = notify_messages_config
+        self._dry_run = "[DRY RUN] " if self._args.dry_run else ""
+
+        self.client = boto3.client(
             service_name,
             region_name=region_name,
         )
@@ -18,39 +27,30 @@ class AWSRegions:
     def get_regions(self):
         logging.info("Getting regions")
         return [
-            region["RegionName"]
-            for region in self.aws_client.describe_regions()["Regions"]
+            region["RegionName"] for region in self.client.describe_regions()["Regions"]
         ]
 
-
-class EC2Instance:
-    def __init__(
-        self,
-        notify_messages_config: dict,
-        region: str,
-        args,
-        search_filter: list,
-        max_results: int = 500,
-    ) -> None:
-        self._args = args
-        self._region = region
-        self._notify_messages_config = notify_messages_config
-        self._dry_run = "[DRY RUN] " if self._args.dry_run else ""
-        self.client = boto3.client(
-            "ec2",
-            region_name=region,
-        )
-        # https://stackoverflow.com/a/952952
+    def get_instances(self):
         # instances = [reservation["Instances"] for reservation in ec2_client.describe_instances(Filters=justin_filter)["Reservations"]]
-        # TODO: Add pagination, maybe (hopefully we don't have more than 500 instance running...)
-        self.instances = [
-            instance
-            for reservation in self.client.describe_instances(
-                MaxResults=max_results,
-                Filters=search_filter,
-            )["Reservations"]
-            for instance in reservation["Instances"]
-        ]
+        self.instances = list()
+        describe_instances = self.client.describe_instances(
+            MaxResults=self._max_results,
+            Filters=self._search_filter,
+        )
+        while True:
+            for reservation in describe_instances.get("Reservations", dict()):
+                self.instances += reservation.get("Instances", list())
+
+            # Pagination
+            next_token = describe_instances.get("NextToken")
+            if next_token:
+                describe_instances = self.client.describe_instances(
+                    MaxResults=self._max_results,
+                    Filters=self._search_filter,
+                    NextToken=next_token,
+                )
+            else:
+                break
 
     def update_tag(
         self,
@@ -66,7 +66,7 @@ class EC2Instance:
                 self._dry_run,
                 instance_name,
                 instance_id,
-                self._region,
+                self._region_name,
                 key,
                 old_value,
                 value,
@@ -96,7 +96,7 @@ class EC2Instance:
                 self._dry_run,
                 instance_name,
                 instance_id,
-                self._region,
+                self._region_name,
             )
         )
         if not self._args.dry_run:
@@ -108,11 +108,11 @@ class EC2Instance:
         instance_name: str,
     ):
         logging.info(
-            "{}Terminating instance {0} [{1}] in region {2}".format(
+            "{}Terminating instance {} [{}] in region {}".format(
                 self._dry_run,
                 instance_name,
                 instance_id,
-                self._region,
+                self._region_name,
             )
         )
         if not self._args.dry_run:

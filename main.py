@@ -22,7 +22,7 @@ from utils import (
     iso_format,
     datetime_handler,
 )
-from utils.aws import EC2Instance, AWSRegions
+from utils.aws import AWSInstance
 from utils.slack_client import SlackClient
 
 
@@ -128,9 +128,9 @@ if __name__ == "__main__":
             regions = test_region_override
             logging.info("Using test regions")
         else:
-            aws_client = AWSRegions(
-                "ec2",
+            aws_client = AWSInstance(
                 "us-east-1",
+                args=args,
             )
             regions = aws_client.get_regions()
 
@@ -139,15 +139,16 @@ if __name__ == "__main__":
         detailed_log = list()
         for region in regions:
             logging.info("Processing region {}".format(region))
-            ec2 = EC2Instance(
-                notify_messages_config,
+            aws_client = AWSInstance(
                 region,
-                args,
-                override_config.get("test_filter", list()),
+                notify_messages_config=notify_messages_config,
+                args=args,
+                search_filter=override_config.get("test_filter"),
             )
+            aws_client.get_instances()
 
             # https://confluentinc.atlassian.net/wiki/spaces/~457145999/pages/3318745562/Cloud+Spend+Reduction+Proposal+AWS+Solutions+Engineering+Account
-            for instance in ec2.instances:
+            for instance in aws_client.instances:
                 state = instance["State"]["Name"]
                 instance_id = instance["InstanceId"]
 
@@ -249,7 +250,7 @@ if __name__ == "__main__":
                                     )
                                 for tag in tags_changed:
                                     if tag[1] != tag[2]:
-                                        ec2.update_tag(
+                                        aws_client.update_tag(
                                             instance_id,
                                             instance_name,
                                             tag[0],  # tag_name_value_n
@@ -298,12 +299,12 @@ if __name__ == "__main__":
                                     # * Set notification tags back to None
                                     # * Add a TERMINATE/TRANSITION log
                                     # * Add a TERMINATE/Add tag log?
-                                    ec2.stop(
+                                    aws_client.stop(
                                         instance_id,
                                         instance_name,
                                     )
 
-                                    ec2.update_tag(
+                                    aws_client.update_tag(
                                         instance_id,
                                         instance_name,
                                         tags_config.get("t_terminate_date"),
@@ -317,7 +318,7 @@ if __name__ == "__main__":
                                     )
 
                                     # Summary stop log
-                                    ec2.update_tag(
+                                    aws_client.update_tag(
                                         instance_id,
                                         instance_name,
                                         tags_config.get("t_stop_logs"),
@@ -371,7 +372,7 @@ if __name__ == "__main__":
                                     )
 
                                     for tag in dn_notification:
-                                        ec2.update_tag(
+                                        aws_client.update_tag(
                                             instance_id,
                                             instance_name,
                                             tag[2],
@@ -420,7 +421,7 @@ if __name__ == "__main__":
                                     )
                                 for tag in tags_changed:
                                     if tag[1] != tag[2]:
-                                        ec2.update_tag(
+                                        aws_client.update_tag(
                                             instance_id,
                                             instance_name,
                                             tag[0],
@@ -459,13 +460,13 @@ if __name__ == "__main__":
 
                                 if r["result"] == "complete_action":
                                     # On complete, terminate the instance
-                                    ec2.terminate(
+                                    aws_client.terminate(
                                         instance_id,
                                         instance_name,
                                     )
 
                                     # Summary stop log
-                                    ec2.update_tag(
+                                    aws_client.update_tag(
                                         instance_id,
                                         instance_name,
                                         tags_config.get("t_terminate_logs"),
