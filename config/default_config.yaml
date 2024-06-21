@@ -1,0 +1,55 @@
+override:
+  # Run only against instances in a specific region, for testing
+  test_region_override:
+    - us-east-1
+    - us-east-2
+
+  # Run only against instances matching specific tags
+  test_filter:
+      - Name: tag:justin
+        Values:
+          - test
+
+slack:
+  channel_key: channel_id
+  token_secret_key: token
+  token_secret_name: justin/slack_token
+  token_secret_region: us-east-1
+  rest_endpoint: https://slack.com/api/chat.postMessage
+
+general:
+  max_stop_days: 62
+  default_stop_days: 31
+  max_terminate_days: 62
+  default_terminate_days: 31
+
+tags:
+  t_email: email
+  t_name: Name
+  t_owner_email: owner_email
+  t_divvy_owner: divvy_owner
+  t_divvy_last_modified_by: divvy_last_modified_by
+  t_autoscaling_group: aws:autoscaling:groupName
+  t_exception: aws_cleaner/cleanup_exception
+  t_stop_date: aws_cleaner/stop_date
+  t_stop_logs: aws_cleaner/stop_notification_log
+  t_terminate_date: aws_cleaner/terminate_date
+  t_terminate_logs: aws_cleaner/terminate_notification_log
+
+  notifications:
+    # Important: Notifications will be desc sorted by value (days)
+    aws_cleaner/notifications/1: 15
+    aws_cleaner/notifications/2: 7
+    aws_cleaner/notifications/3: 2
+
+notify_messages:
+  add_action_date: "ADD_ACTION_DATE: Added {action} date to {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region}, set to *{new_date}* (tag `[{tag}]`)"
+  reset_action_date: "RESET_ACTION_DATE: Updating {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region}: {action} date changed from {old_date} to *{new_date}* (tag `[{tag}]`)"
+  complete_action: "COMPLETE_ACTION: Completed {action} on {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} (tag `[{tag}]`)"
+  transition_action: "TRANSITION_ACTION: Added new {action} on {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} on *{new_date}* (tag `[{tag}]`)"
+  past_bump_notification: "PAST_BUMP_NOTIFICATION: Missing #{n} notification: will {action} {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} on *{new_date}* (previously set to {old_date}) (tag `[{tag}]`)"
+  send_notification: "SEND_NOTIFICATION: Sending #{n} {action} notification for {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region}: will {action} on *{new_date}* (tag `[{tag}]`)"
+  log_no_notification: "LOG_NO_NOTIFICATION: Will {action} {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} on *{new_date}* (tag `[{tag}]`)"
+  ignore_other_states: "IGNORE_OTHER_STATES: Ignoring {instance_type} {instance_name} [`{instance_id}`] in region {region} because its state is {state}"
+  # Not currently passing in exception value, because it would require adding a different passed-in parameters to NOTIFY_MESSAGES
+  skip_exception: "SKIP_EXCEPTION: Skipping {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} because it has {tag} set"
