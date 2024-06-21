@@ -58,4 +58,4 @@ class SlackClient:
                 "text": text,
             },
         )
-        logging.debug("SLACK RESPONSE: {text}".format(text=r.text))
+        logging.debug("[SLACK RESPONSE] {}".format(r.text))

@@ -30,17 +30,17 @@ def determine_action(
     odn_notif = dict()
     odn_notif_none = dict()
     for n, notif in enumerate(idn_notification):
-        odn_notif["odn_notification_{n}".format(n=n + 1)] = notif[0]
-        odn_notif_none["odn_notification_{n}".format(n=n + 1)] = None
+        odn_notif["odn_notification_{}".format(n + 1)] = notif[0]
+        odn_notif_none["odn_notification_{}".format(n + 1)] = None
 
     logging.debug(
         "idn_action_date:[{idn_action_date}], {idn_notifications}, i_default_days:[{i_default_days}], i_max_days:[{i_max_days}]".format(
             idn_action_date=idn_action_date,
             idn_notifications=", ".join(
                 [
-                    "{key}:[{value}]".format(
-                        key=key,
-                        value=value,
+                    "{}:[{}]".format(
+                        key,
+                        value,
                     )
                     for key, value in odn_notif.items()
                 ]
@@ -71,12 +71,12 @@ def determine_action(
         odn_notif_aux = dict(odn_notif_none)  # Make copy of dictionary
         for n, notif in enumerate(idn_notification):
             odn_notif_aux[
-                "odn_notification_{n}".format(
-                    n=n + 1,
+                "odn_notification_{}".format(
+                    n + 1,
                 )
             ] = d_run_date
             if n > 0:
-                odn_notif_aux["odn_notification_{n}".format(n=n)] = idn_notification[
+                odn_notif_aux["odn_notification_{}".format(n)] = idn_notification[
                     n - 1
                 ][0]
             if notif[0] is None:
@@ -91,7 +91,7 @@ def determine_action(
 
         # message = "Complete action"
         odn_notif_aux[
-            "odn_notification_{n}".format(n=len(idn_notification))
+            "odn_notification_{}".format(len(idn_notification))
         ] = idn_notification[-1][0]
         return {
             **odn_notif_aux,
@@ -104,12 +104,12 @@ def determine_action(
         odn_notif_aux = dict(odn_notif_none)  # Make copy of dictionary
         for n, notif in enumerate(idn_notification):
             odn_notif_aux[
-                "odn_notification_{n}".format(
-                    n=n + 1,
+                "odn_notification_{}".format(
+                    n + 1,
                 )
             ] = d_run_date
             if n > 0:
-                odn_notif_aux["odn_notification_{n}".format(n=n)] = idn_notification[
+                odn_notif_aux["odn_notification_{}".format(n)] = idn_notification[
                     n - 1
                 ][0]
             if notif[0] is None and remaining_days <= datetime.timedelta(days=notif[1]):
@@ -123,7 +123,7 @@ def determine_action(
 
         # message = "Log without notification"
         odn_notif_aux[
-            "odn_notification_{n}".format(n=len(idn_notification))
+            "odn_notification_{}".format(len(idn_notification))
         ] = idn_notification[-1][0]
         return {
             **odn_notif_aux,
@@ -202,10 +202,10 @@ def sys_exc(exc_info):
     Capture exception type, class and line number
     """
     exc_type, exc_obj, exc_tb = exc_info
-    return "{exc_type} | {lineno} | {exc_obj}".format(
-        exc_type=exc_type,
-        lineno=exc_tb.tb_lineno,
-        exc_obj=exc_obj,
+    return "{} | {} | {}".format(
+        exc_type,
+        exc_tb.tb_lineno,
+        exc_obj,
     )
 
 

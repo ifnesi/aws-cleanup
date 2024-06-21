@@ -110,12 +110,10 @@ if __name__ == "__main__":
         else:
             d_run_date = D_TODAY
 
-        # Slack notification stuff; could probably put this somewhere up higher?
+        # Slack notification
         # Question: if we are unable to retrieve the Slack token (and maybe send a test message), should we kill the entire process?
         slack_client = SlackClient(slack_config)
 
-        # Main process run
-        #
         # We won't send most stuff to Slack, but use this to validate that connection is okay and indicate the script is starting
         start_text = (
             "Running cleaner on {}".format(d_run_date)
@@ -136,10 +134,9 @@ if __name__ == "__main__":
             )
             regions = aws_client.get_regions()
 
-        logging.info("Using regions: {}".format(regions))
+        logging.info("Using regions: {}".format(", ".join(regions)))
 
         detailed_log = list()
-
         for region in regions:
             logging.info("Processing region {}".format(region))
             ec2 = EC2Instance(
@@ -245,9 +242,9 @@ if __name__ == "__main__":
                                 for n, notif in enumerate(dn_notification):
                                     tags_changed.append(
                                         (
-                                            notif[2],
-                                            notif[0],
-                                            r["odn_notification_{n}".format(n=n + 1)],
+                                            notif[2],  # tag_name_n
+                                            notif[0],  # tag_name_value_n
+                                            r["odn_notification_{}".format(n + 1)],
                                         )
                                     )
                                 for tag in tags_changed:
@@ -255,9 +252,9 @@ if __name__ == "__main__":
                                         ec2.update_tag(
                                             instance_id,
                                             instance_name,
-                                            tag[0],
-                                            tag[2],
-                                            tag[1],
+                                            tag[0],  # tag_name_value_n
+                                            tag[2],  # tag_name_n
+                                            tag[1],  # days_n
                                         )
 
                                 message = r["result"].format(
@@ -389,7 +386,8 @@ if __name__ == "__main__":
                                 # Returns dict with the following:
                                 # odn_notification_1: New dn_notification_1
                                 # odn_notification_2: New dn_notification_2
-                                # odn_notification_3: New dn_notification_3
+                                # ...
+                                # odn_notification_n: New dn_notification_n
                                 # odn_action_date
                                 # result ENUM
 
@@ -545,7 +543,7 @@ if __name__ == "__main__":
 
                 else:  # In autoscaling group
                     logging.info(
-                        "Instance {0} is in ASG {1}, skipping".format(
+                        "Instance {} is in ASG {}, skipping".format(
                             instance_id,
                             autoscaling_group,
                         )
@@ -571,8 +569,8 @@ if __name__ == "__main__":
                     key=sort_key,
                 )
                 logging.info(
-                    "{notification} List:".format(
-                        notification=action.upper(),
+                    "{} List:".format(
+                        action.upper(),
                     )
                 )
             else:  # ALTERNATE (not in any action)
@@ -582,22 +580,21 @@ if __name__ == "__main__":
                 )
                 logging.info("ALTERNATE List:")
 
-            if action_list is not None:
-                for item in action_list:
-                    logging.info(
-                        json.dumps(
-                            item,
-                            indent=3,
-                            default=datetime_handler,
-                        )
+            for item in action_list:
+                logging.info(
+                    json.dumps(
+                        item,
+                        indent=3,
+                        default=datetime_handler,
                     )
-                    slack_client.send_text(
-                        "{dryrun}{owner}: {message}".format(
-                            dryrun="DRY RUN: " if args.dry_run else "",
-                            owner=item["email"],
-                            message=item["message"],
-                        ),
-                    )
+                )
+                slack_client.send_text(
+                    "{}{}: {}".format(
+                        "[DRY RUN] " if args.dry_run else "",
+                        item["email"],
+                        item["message"],
+                    ),
+                )
 
     except Exception:
         logging.error(sys_exc(sys.exc_info()))
