@@ -210,5 +210,13 @@ def sys_exc(exc_info):
 
 
 def datetime_handler(o):
-    if isinstance(o, (datetime.datetime, datetime.date, datetime.time, bytes)):
+    if isinstance(
+        o,
+        (
+            datetime.datetime,
+            datetime.date,
+            datetime.time,
+            bytes,
+        ),
+    ):
         return str(o)
