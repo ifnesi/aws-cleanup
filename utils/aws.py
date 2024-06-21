@@ -13,6 +13,7 @@ class AWSInstance:
         notify_messages_config: dict = None,
     ) -> None:
         self._args = args
+        self._service_name = service_name
         self._region_name = region_name
         self._search_filter = search_filter
         self._max_results = max_results
@@ -32,14 +33,14 @@ class AWSInstance:
 
     def get_instances(self):
         # instances = [reservation["Instances"] for reservation in ec2_client.describe_instances(Filters=justin_filter)["Reservations"]]
-        self.instances = list()
+        instances = list()
         describe_instances = self.client.describe_instances(
             MaxResults=self._max_results,
             Filters=self._search_filter,
         )
         while True:
-            for reservation in describe_instances.get("Reservations", dict()):
-                self.instances += reservation.get("Instances", list())
+            for reservation in describe_instances.get("Reservations", list()):
+                instances += reservation.get("Instances", list())
 
             # Pagination
             next_token = describe_instances.get("NextToken")
@@ -51,6 +52,14 @@ class AWSInstance:
                 )
             else:
                 break
+
+        logging.info(
+            "Total {} instances found: {}".format(
+                self._service_name,
+                len(instances),
+            )
+        )
+        return instances
 
     def update_tag(
         self,
