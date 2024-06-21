@@ -207,3 +207,8 @@ def sys_exc(exc_info):
         lineno=exc_tb.tb_lineno,
         exc_obj=exc_obj,
     )
+
+
+def datetime_handler(o):
+    if isinstance(o, (datetime.datetime, datetime.date, datetime.time)):
+        return str(o)

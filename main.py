@@ -7,6 +7,7 @@
 # python3 -m pip install -r requirements.txt
 import os
 import sys
+import json
 import yaml
 import logging
 import argparse
@@ -19,6 +20,7 @@ from utils import (
     date_or_none,
     sys_exc,
     iso_format,
+    datetime_handler,
 )
 from utils.aws import EC2Instance, AWSRegions
 from utils.slack_client import SlackClient
@@ -78,7 +80,7 @@ if __name__ == "__main__":
 
     # Set log level
     logging.basicConfig(
-        format=f"[{id}] %(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
+        format=f"%(asctime)s.%(msecs)03d [%(levelname)s]: %(message)s",
         level=logging.DEBUG if args.debug else logging.INFO,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
@@ -562,7 +564,7 @@ if __name__ == "__main__":
         # * Name
 
         actions = ["ignore", "stop", "terminate"]
-        for action in [actions, [actions]]:
+        for action in [*actions, [actions]]:
             if isinstance(action, str):  # actions
                 action_list = sorted(
                     [x for x in detailed_log if x["action"] == action],
@@ -582,7 +584,13 @@ if __name__ == "__main__":
 
             if action_list is not None:
                 for item in action_list:
-                    logging.info(item)
+                    logging.info(
+                        json.dumps(
+                            item,
+                            indent=3,
+                            default=datetime_handler,
+                        )
+                    )
                     slack_client.send_text(
                         "{dryrun}{owner}: {message}".format(
                             dryrun="DRY RUN: " if args.dry_run else "",
