@@ -6,19 +6,19 @@ class AWSInstance:
     def __init__(
         self,
         region_name: str,
-        args=None,
+        dry_run: bool = True,
         max_results: int = 100,
         service_name: str = "ec2",
         search_filter: list = None,
         notify_messages_config: dict = None,
     ) -> None:
-        self._args = args
         self._service_name = service_name
         self._region_name = region_name
         self._search_filter = search_filter
         self._max_results = max_results
         self._notify_messages_config = notify_messages_config
-        self._dry_run = "[DRY RUN] " if self._args.dry_run else ""
+        self._dry_run = dry_run
+        self._dry_run_label = "[DRY RUN] " if dry_run else ""
 
         self.client = boto3.client(
             service_name,
@@ -68,7 +68,7 @@ class AWSInstance:
         # TODO: In the future, could batch this up, for now doing it one at a time
         logging.info(
             "{}Updating of tag on {} [{}] in region {}: setting {} from {} to {}".format(
-                self._dry_run,
+                self._dry_run_label,
                 instance_name,
                 instance_id,
                 self._region_name,
@@ -77,7 +77,7 @@ class AWSInstance:
                 value,
             )
         )
-        if not self._args.dry_run:
+        if not self._dry_run:
             # This is super sloppy; right now we're relying on the fact that this is called after ec2_client has created for the relevant region
             # Later could either pass it in, or create an array of clients for regions
             # str(value) takes care of converting datetime.date to string in isoformat '2024-01-01'
@@ -98,13 +98,13 @@ class AWSInstance:
     ):
         logging.info(
             "{}Stopping instance {} [{}] in region {}".format(
-                self._dry_run,
+                self._dry_run_label,
                 instance_name,
                 instance_id,
                 self._region_name,
             )
         )
-        if not self._args.dry_run:
+        if not self._dry_run:
             self.client.stop_instances(InstanceIds=[instance_id])
 
     def terminate(
@@ -114,11 +114,11 @@ class AWSInstance:
     ):
         logging.info(
             "{}Terminating instance {} [{}] in region {}".format(
-                self._dry_run,
+                self._dry_run_label,
                 instance_name,
                 instance_id,
                 self._region_name,
             )
         )
-        if not self._args.dry_run:
+        if not self._dry_run:
             self.client.terminate_instances(InstanceIds=[instance_id])

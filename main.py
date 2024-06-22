@@ -41,7 +41,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AWS Cleanup Script")
     parser.add_argument(
         "--config",
-        help="Set YAML configuration file (default is `config/default_config.yaml`)",
+        help="Set YAML configuration file (default is: config/default_config.yaml)",
         dest="config",
         type=str,
         default=os.path.join("config", "default_config.yaml"),
@@ -130,7 +130,6 @@ if __name__ == "__main__":
         else:
             aws_client = AWSInstance(
                 "us-east-1",
-                args=args,
             )
             regions = aws_client.get_regions()
 
@@ -141,8 +140,8 @@ if __name__ == "__main__":
             logging.info("Processing region {}".format(region))
             aws_client = AWSInstance(
                 region,
+                dry_run=args.dry_run,
                 notify_messages_config=notify_messages_config,
-                args=args,
                 search_filter=override_config.get("test_filter"),
             )
             ec2_instances = aws_client.get_instances()
@@ -599,3 +598,6 @@ if __name__ == "__main__":
 
     except Exception:
         logging.error(sys_exc(sys.exc_info()))
+
+    except KeyboardInterrupt:
+        logging.info("Aborted by user!")
