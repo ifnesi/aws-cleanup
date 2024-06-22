@@ -1,10 +1,27 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright 2020 Confluent Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 # BY DEFAULT, WILL ONLY RUN AGAINST TEST INSTANCES
 # MUST USE --full FLAG TO RUN AGAINST WHOLE ACCOUNT
 
 # On fresh Ubuntu instance, install prereqs:
 # sudo apt-get update; sudo apt-get install -y python3-pip;
 # python3 -m pip install -r requirements.txt
+#
 import os
 import sys
 import json
@@ -22,7 +39,7 @@ from utils import (
     iso_format,
     datetime_handler,
 )
-from utils.aws import AWSInstance
+from utils.aws_client import AWSClient
 from utils.slack_client import SlackClient
 
 
@@ -128,9 +145,7 @@ if __name__ == "__main__":
             regions = test_region_override
             logging.info("Using test regions")
         else:
-            aws_client = AWSInstance(
-                "us-east-1",
-            )
+            aws_client = AWSClient("us-east-1")
             regions = aws_client.get_regions()
 
         logging.info("Using regions: {}".format(", ".join(regions)))
@@ -138,7 +153,7 @@ if __name__ == "__main__":
         detailed_log = list()
         for region in regions:
             logging.info("Processing region {}".format(region))
-            aws_client = AWSInstance(
+            aws_client = AWSClient(
                 region,
                 dry_run=args.dry_run,
                 notify_messages_config=notify_messages_config,
