@@ -20,3 +20,8 @@ options:
   --override-stop-date  Override stop date (Not implemented yet)
   --debug               Set logging as DEBUG (default is INFO)
   ```
+
+  ## Tests
+  ```bash
+  pytest -s -v tests/test_connection.py
+  ```
