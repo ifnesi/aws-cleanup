@@ -23,7 +23,7 @@ from utils.slack_client import SlackClient
 from utils.aws_client import AWSClient
 
 
-def test_aws_connection(config):
+def test_aws_connection():
     aws_client = AWSClient("us-east-1")
     assert aws_client.client._exceptions == None
 
