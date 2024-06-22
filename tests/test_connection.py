@@ -37,4 +37,5 @@ def test_slack_connection(config):
     slack_client = SlackClient(slack_config)
     response = slack_client.send_text("PyTest at {}".format(datetime.datetime.now()))
     response_json = response.json()
+    assert response.status_code == 200
     assert response_json.get("ok") == True
