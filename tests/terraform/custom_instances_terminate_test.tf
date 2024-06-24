@@ -21,204 +21,186 @@
 ############################################################
 
 resource "aws_instance" "terminate_missing_terminate_date" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
-    "Name" = "terminate_missing_terminate_date"
+    "owner_email" = (var.owner_email)
+    "Name"        = "terminate_missing_terminate_date"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_missing_terminate_date" {
   instance_id = aws_instance.terminate_missing_terminate_date.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 ############################################################
 
 resource "aws_instance" "terminate_malformed_terminate_date" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
+    "owner_email"       = (var.owner_email)
     (local.t_terminate_date) = "xxx"
-    "Name" = "terminate_malformed_terminate_date"
+    "Name"              = "terminate_malformed_terminate_date"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_malformed_terminate_date" {
   instance_id = aws_instance.terminate_malformed_terminate_date.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 ############################################################
 
 resource "aws_instance" "terminate_future_terminate_date_too_far" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
+    "owner_email"       = (var.owner_email)
     (local.t_terminate_date) = local.d_80
-    "Name" = "terminate_future_terminate_date_too_far"
+    "Name"              = "terminate_future_terminate_date_too_far"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_future_terminate_date_too_far" {
   instance_id = aws_instance.terminate_future_terminate_date_too_far.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 ############################################################
 
 resource "aws_instance" "terminate_future_terminate_date" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
+    "owner_email"       = (var.owner_email)
     (local.t_terminate_date) = local.d_20
-    "Name" = "terminate_future_terminate_date"
+    "Name"              = "terminate_future_terminate_date"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_future_terminate_date" {
   instance_id = aws_instance.terminate_future_terminate_date.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 ############################################################
 
 resource "aws_instance" "terminate_past_0_notifications_sent" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
+    "owner_email"       = (var.owner_email)
     (local.t_terminate_date) = local.d_p1
-    "Name" = "terminate_past_0_notifications_sent"
+    "Name"              = "terminate_past_0_notifications_sent"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_past_0_notifications_sent" {
   instance_id = aws_instance.terminate_past_0_notifications_sent.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 ############################################################
 
 resource "aws_instance" "terminate_past_1_notifications_sent" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
-    (local.t_terminate_date) = local.d_p1
+    "owner_email"            = (var.owner_email)
+    (local.t_terminate_date)      = local.d_p1
     (local.t_notification_1) = local.d_p1
-    "Name" = "terminate_past_1_notifications_sent"
+    "Name"                   = "terminate_past_1_notifications_sent"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_past_1_notifications_sent" {
   instance_id = aws_instance.terminate_past_1_notifications_sent.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 ############################################################
 
 resource "aws_instance" "terminate_past_2_notifications_sent" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
-    (local.t_terminate_date) = local.d_p1
+    "owner_email"            = (var.owner_email)
+    (local.t_terminate_date)      = local.d_p1
     (local.t_notification_1) = local.d_p1
     (local.t_notification_2) = local.d_p1
-    "Name" = "terminate_past_2_notifications_sent"
+    "Name"                   = "terminate_past_2_notifications_sent"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_past_2_notifications_sent" {
   instance_id = aws_instance.terminate_past_2_notifications_sent.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 ############################################################
 
 resource "aws_instance" "terminate_past_3_notifications_sent" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
-    (local.t_terminate_date) = local.d_p1
+    "owner_email"            = (var.owner_email)
+    (local.t_terminate_date)      = local.d_p1
     (local.t_notification_1) = local.d_p1
     (local.t_notification_2) = local.d_p1
     (local.t_notification_3) = local.d_p1
-    "Name" = "terminate_past_3_notifications_sent"
+    "Name"                   = "terminate_past_3_notifications_sent"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_past_3_notifications_sent" {
   instance_id = aws_instance.terminate_past_3_notifications_sent.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 ############################################################
 
 resource "aws_instance" "terminate_future_notification_1" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
+    "owner_email"       = (var.owner_email)
     (local.t_terminate_date) = local.d_8
-    "Name" = "terminate_future_notification_1"
+    "Name"              = "terminate_future_notification_1"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_future_notification_1" {
   instance_id = aws_instance.terminate_future_notification_1.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 
@@ -226,94 +208,86 @@ resource "aws_ec2_instance_state" "terminate_future_notification_1" {
 ############################################################
 
 resource "aws_instance" "terminate_future_notification_2" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
+    "owner_email"       = (var.owner_email)
     (local.t_terminate_date) = local.d_3
-    "Name" = "terminate_future_notification_2"
+    "Name"              = "terminate_future_notification_2"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_future_notification_2" {
   instance_id = aws_instance.terminate_future_notification_2.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 ############################################################
 
 resource "aws_instance" "terminate_future_notification_3" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
-    (local.t_terminate_date) = local.d_1
+    "owner_email"            = (var.owner_email)
+    (local.t_terminate_date)      = local.d_1
     (local.t_notification_1) = local.d_p1
     (local.t_notification_2) = local.d_p1
-    "Name" = "terminate_future_notification_3"
+    "Name"                   = "terminate_future_notification_3"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_future_notification_3" {
   instance_id = aws_instance.terminate_future_notification_3.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 ############################################################
 
 resource "aws_instance" "terminate_future_1_notifications_sent" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
-    (local.t_terminate_date) = local.d_8
+    "owner_email"            = (var.owner_email)
+    (local.t_terminate_date)      = local.d_8
     (local.t_notification_1) = local.d_p1
-    "Name" = "terminate_future_1_notifications_sent"
+    "Name"                   = "terminate_future_1_notifications_sent"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_future_1_notifications_sent" {
   instance_id = aws_instance.terminate_future_1_notifications_sent.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 ############################################################
 
 resource "aws_instance" "terminate_future_2_notifications_sent" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
-    (local.t_terminate_date) = local.d_3
+    "owner_email"            = (var.owner_email)
+    (local.t_terminate_date)      = local.d_3
     (local.t_notification_1) = local.d_p1
     (local.t_notification_2) = local.d_p1
-    "Name" = "terminate_future_2_notifications_sent"
+    "Name"                   = "terminate_future_2_notifications_sent"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_future_2_notifications_sent" {
   instance_id = aws_instance.terminate_future_2_notifications_sent.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 
@@ -321,26 +295,24 @@ resource "aws_ec2_instance_state" "terminate_future_2_notifications_sent" {
 ############################################################
 
 resource "aws_instance" "terminate_future_3_notifications_sent" {
-  ami   = var.x_ami
-  instance_type = "t3.nano"
-  key_name                    = var.key_name
-  subnet_id                   = local.subnet_id
+  ami           = local.ami
+  instance_type = "t4g.nano"
+  subnet_id     = local.subnet_id
 
-  root_block_device { volume_size = 10 }
   tags = merge({
-    "justin" = "test"
-    "owner_email" = (local.test_instance_email)
-    (local.t_terminate_date) = local.d_1
+    "owner_email"            = (var.owner_email)
+    (local.t_terminate_date)      = local.d_1
     (local.t_notification_1) = local.d_p1
     (local.t_notification_2) = local.d_p1
     (local.t_notification_3) = local.d_p1
-    "Name" = "terminate_future_3_notifications_sent"
+    "Name"                   = "terminate_future_3_notifications_sent"
     },
+    var.additional_tags,
   )
 }
 resource "aws_ec2_instance_state" "terminate_future_3_notifications_sent" {
   instance_id = aws_instance.terminate_future_3_notifications_sent.id
-  state = "stopped"
+  state       = "stopped"
 }
 
 
