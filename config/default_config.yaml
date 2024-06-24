@@ -6,9 +6,9 @@ override:
 
   # Run only against instances matching specific tags
   test_filter:
-      - Name: tag:justin
+      - Name: tag:aws_cleaner/filter
         Values:
-          - test
+          - justin
 
 slack:
   channel_key: channel_id
