@@ -17,6 +17,7 @@
 #
 import logging
 import datetime
+from .result import Result
 
 
 def determine_action(
@@ -41,8 +42,8 @@ def determine_action(
     - ...
     - odn_notification_n: New dn_notification_n
     - odn_action_date
-    - result: string result
-    - complete_action: boolean
+    - result: enum
+    - n: notification number (or -1 if not applicable)
     All actual changes (tags and/or instance modification) occurs in calling code, not here.
     """
     odn_notif = dict()
@@ -73,8 +74,8 @@ def determine_action(
         return {
             **odn_notif_none,
             "odn_action_date": d_run_date + datetime.timedelta(days=i_default_days),
-            "result": notify_messages_config.get("add_action_date"),
-            "complete_action": False,
+            "result": Result.ADD_ACTION_DATE,
+            "message": notify_messages_config.get(Result.ADD_ACTION_DATE),
         }
 
     elif idn_action_date - d_run_date > datetime.timedelta(days=i_max_days):
@@ -82,8 +83,8 @@ def determine_action(
         return {
             **odn_notif_none,
             "odn_action_date": d_run_date + datetime.timedelta(days=i_max_days),
-            "result": notify_messages_config.get("reset_action_date"),
-            "complete_action": False,
+            "result": Result.RESET_ACTION_DATE,
+            "message": notify_messages_config.get(Result.RESET_ACTION_DATE),
         }
 
     elif idn_action_date <= d_run_date:
@@ -105,10 +106,9 @@ def determine_action(
                 return {
                     **odn_notif_aux,
                     "odn_action_date": d_run_date
-                    + datetime.timedelta(days=max_notif_days - n),
-                    "result": notify_messages_config.get("past_bump_notification").replace("__N__", str(n + 1)),
-                    # "n": n + 1,
-                    "complete_action": False,
+                        + datetime.timedelta(days=max_notif_days - n),
+                    "result": Result.PAST_BUMP_NOTIFICATION,
+                    "message": notify_messages_config.get(Result.PAST_BUMP_NOTIFICATION).replace("__N__", str(n + 1)),
                 }
 
         # message = "Complete action"
@@ -118,8 +118,8 @@ def determine_action(
         return {
             **odn_notif_aux,
             "odn_action_date": d_run_date,
-            "result": notify_messages_config.get("complete_action"),
-            "complete_action": True,
+            "result": Result.COMPLETE_ACTION,
+            "message": notify_messages_config.get(Result.COMPLETE_ACTION),
         }
 
     else:
@@ -140,9 +140,8 @@ def determine_action(
                 return {
                     **odn_notif_aux,
                     "odn_action_date": idn_action_date,
-                    "result": notify_messages_config.get("send_notification").replace("__N__", str(n + 1)),
-                    "complete_action": False,
-                    # "n": n + 1,
+                    "result": Result.SEND_NOTIFICATION,
+                    "message": notify_messages_config.get(Result.SEND_NOTIFICATION).replace("__N__", str(n + 1)),
                 }
 
         # message = "Log without notification"
@@ -152,8 +151,8 @@ def determine_action(
         return {
             **odn_notif_aux,
             "odn_action_date": idn_action_date,
-            "result": notify_messages_config.get("log_no_notification"),
-            "complete_action": False,
+            "result": Result.LOG_NO_NOTIFICATION,
+            "message": notify_messages_config.get(Result.LOG_NO_NOTIFICATION),
         }
 
 

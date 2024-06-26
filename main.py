@@ -41,6 +41,7 @@ from utils import (
 )
 from utils.aws_client import AWSClient
 from utils.slack_client import SlackClient
+from utils.result import Result
 
 
 ###############################
@@ -272,7 +273,7 @@ if __name__ == "__main__":
                                             tag[1],  # days_n
                                         )
 
-                                message = r["result"].format(
+                                message = r["message"].format(
                                     instance_type="EC2",
                                     instance_name=instance_name,
                                     instance_id=instance_id,
@@ -301,7 +302,7 @@ if __name__ == "__main__":
                                     )
                                 )
 
-                                if r["complete_action"]:
+                                if r["result"] == Result.COMPLETE_ACTION:
                                     # On complete:
                                     # Up till now, have:
                                     # * Left notification tags alone (tags are from stop notifications)
@@ -345,9 +346,7 @@ if __name__ == "__main__":
                                         None,
                                     )
 
-                                    message = notify_messages_config[
-                                        "transition_action"
-                                    ].format(
+                                    message = notify_messages_config.get(Result.TRANSITION_ACTION).format(
                                         instance_type="EC2",
                                         instance_name=instance_name,
                                         instance_id=instance_id,
@@ -373,7 +372,7 @@ if __name__ == "__main__":
                                             region=region,
                                             action="terminate",
                                             tag=tags_config.get("t_terminate_date"),
-                                            result="transition_action",
+                                            result=Result.TRANSITION_ACTION,
                                             old_date=None,
                                             new_date=d_run_date
                                             + datetime.timedelta(
@@ -443,7 +442,7 @@ if __name__ == "__main__":
                                             tag[1],
                                         )
 
-                                message = r["result"].format(
+                                message = r["message"].format(
                                     instance_type="EC2",
                                     instance_name=instance_name,
                                     instance_id=instance_id,
@@ -472,7 +471,7 @@ if __name__ == "__main__":
                                     )
                                 )
 
-                                if r["complete_action"]:
+                                if r["result"] == Result.COMPLETE_ACTION:
                                     # On complete, terminate the instance
                                     aws_client.terminate(
                                         instance_id,
@@ -497,9 +496,7 @@ if __name__ == "__main__":
                                 pass  # Placeholder for 'override' behavior
 
                         else:  # State is not running or stopped
-                            message = notify_messages_config[
-                                "ignore_other_states"
-                            ].format(
+                            message = notify_messages_config.get(Result.IGNORE_OTHER_STATES).format(
                                 instance_type="EC2",
                                 instance_name=instance_name,
                                 instance_id=instance_id,
@@ -520,7 +517,7 @@ if __name__ == "__main__":
                                     region=region,
                                     action="ignore",
                                     tag=state,  # again, this is a hack
-                                    result="ignore_other_states",
+                                    result=Result.IGNORE_OTHER_STATES,
                                     old_date=d_run_date,
                                     new_date=d_run_date,
                                     message=message,
@@ -528,7 +525,7 @@ if __name__ == "__main__":
                             )
 
                     else:  # Exception exists, add to notify list
-                        message = notify_messages_config["skip_exception"].format(
+                        message = notify_messages_config.get(Result.SKIP_EXCEPTION).format(
                             instance_type="EC2",
                             instance_name=instance_name,
                             instance_id=instance_id,
@@ -549,7 +546,7 @@ if __name__ == "__main__":
                                 region=region,
                                 action="skip_exception",
                                 tag=exception,  # This is a hack
-                                result="skip_exception",
+                                result=Result.SKIP_EXCEPTION,
                                 old_date=d_run_date,
                                 new_date=d_run_date,
                                 message=message,
@@ -589,12 +586,22 @@ if __name__ == "__main__":
                     )
                 )
                 slack_client.send_text(
-                    "{}{}: {}".format(
+                    "{}{} [{}]: {}".format(
                         "[DRY RUN] " if args.dry_run else "",
                         item["email"],
+                        item["result"],
                         item["message"],
                     ),
                 )
+                if item["email"] and item["result"] not in (
+                    Result.IGNORE_OTHER_STATES,
+                    Result.LOG_NO_NOTIFICATION,
+                    Result.SKIP_EXCEPTION,
+                ):
+                    slack_client.send_dm(
+                        email = item["email"],
+                        text = item["message"],
+                    )
         # This is basically the list of items that weren't processed because they were in an unknown state
         logging.info("UNPROCESSED List:")
         action_list = sorted(

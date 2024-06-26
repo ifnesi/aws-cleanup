@@ -28,6 +28,7 @@ class SlackClient:
     ) -> None:
         self.token = None
         self.channel_id = None
+        self.user_map = dict()
         self._slack_config = slack_config
         aws_secret_client = boto3.client(
             service_name="secretsmanager",
@@ -43,6 +44,9 @@ class SlackClient:
             self.channel_id = json.loads(
                 get_secret_value_response.get("SecretString")
             ).get(slack_config.get("channel_key"))
+            self.headers = {
+                "Authorization": "Bearer {}".format(self.token)
+            }
         except:
             logging.error(
                 "Unable to retrieve Slack token from AWS Secret Manager object {}, key {}, region {}".format(
@@ -52,7 +56,7 @@ class SlackClient:
                 )
             )
         else:
-            logging.info(
+            logging.debug(
                 "Using Slack token {}, and generic notification chanenl {}".format(
                     self.token,
                     self.channel_id,
@@ -64,16 +68,51 @@ class SlackClient:
         text: str,
     ):
         response = requests.post(
-            url=self._slack_config.get("rest_endpoint"),
-            headers={
-                "Authorization": "Bearer {}".format(
-                    self.token,
-                )
-            },
+            url=self._slack_config.get("chat_post_message_endpoint"),
+            headers=self.headers,
             json={
                 "channel": self.channel_id,
                 "text": text,
             },
         )
-        logging.debug("[SLACK RESPONSE] {}".format(response.text))
+        logging.debug("[SLACK POST RESPONSE] {}".format(response.text))
         return response
+
+    def send_dm(
+            self,
+            text: str,
+            email: str
+    ):
+        if email not in self.user_map:
+            d = {"email": email}
+            r = requests.post(
+                url=self._slack_config.get("user_lookup_endpoint"),
+                headers=self.headers,
+                data=d
+            )
+            logging.debug("[SLACK EMAIL LOOKUP RESPONSE] {}".format(r.text))
+            # Will result in 'None'
+            try:
+                self.user_map[email] = r.json()["user"]["id"]
+            except:
+                self.user_map[email] = None
+        if self.user_map[email]:
+            response = requests.post(
+                url=self._slack_config.get("chat_post_message_endpoint"),
+                headers=self.headers,
+                json={
+                    "channel": self.user_map[email],
+                    "text": text,
+                },
+            )
+            return response
+        else:
+            # For now, instances where we can't find the user will be dumped to the main channel
+            response = requests.post(
+                url=self._slack_config.get("chat_post_message_endpoint"),
+                headers=self.headers,
+                json={
+                    "channel": self.channel_id,
+                    "text": "USER NOT FOUND: {}: Not notified for {}".format(email, text),
+                },
+            )
