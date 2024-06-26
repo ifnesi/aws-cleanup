@@ -9,6 +9,11 @@ override:
       - Name: tag:aws_cleaner/filter
         Values:
           - justin
+      # - Name: tag:Name
+      #   Values:
+      #     - stop_future_notification_1
+      #     - stop_future_notification_2
+      #     - stop_future_notification_3
 
 slack:
   channel_key: channel_id

@@ -70,7 +70,7 @@ def determine_action(
     )
 
     if idn_action_date is None:
-        # message = "Set unset date"
+        # Result: Set Unset date
         return {
             **odn_notif_none,
             "odn_action_date": d_run_date + datetime.timedelta(days=i_default_days),
@@ -79,7 +79,7 @@ def determine_action(
         }
 
     elif idn_action_date - d_run_date > datetime.timedelta(days=i_max_days):
-        # message = "Set to max"
+        # Result: Set date to max
         return {
             **odn_notif_none,
             "odn_action_date": d_run_date + datetime.timedelta(days=i_max_days),
@@ -101,7 +101,7 @@ def determine_action(
                     n - 1
                 ][0]
             if notif[0] is None:
-                # message = "Set stop date to today + N (missing notifications)"
+                # Bumpo and set stop date to today + N (missing notifications)
                 # Kind of prefer using String `replace()` rather than passing back a variable just for this condition
                 return {
                     **odn_notif_aux,
@@ -111,7 +111,7 @@ def determine_action(
                     "message": notify_messages_config.get(Result.PAST_BUMP_NOTIFICATION).replace("__N__", str(n + 1)),
                 }
 
-        # message = "Complete action"
+        # Result: Complete action
         odn_notif_aux[
             "odn_notification_{}".format(len(idn_notification))
         ] = idn_notification[-1][0]
@@ -136,7 +136,7 @@ def determine_action(
                     n - 1
                 ][0]
             if notif[0] is None and remaining_days <= datetime.timedelta(days=notif[1]):
-                # message = "Send #{n} notification".format(n=n+1)
+                # Result: Send nth notification
                 return {
                     **odn_notif_aux,
                     "odn_action_date": idn_action_date,
@@ -144,7 +144,7 @@ def determine_action(
                     "message": notify_messages_config.get(Result.SEND_NOTIFICATION).replace("__N__", str(n + 1)),
                 }
 
-        # message = "Log without notification"
+        # Result: Log without notification
         odn_notif_aux[
             "odn_notification_{}".format(len(idn_notification))
         ] = idn_notification[-1][0]
@@ -187,32 +187,32 @@ def sort_key(x):
     )
 
 
-def add_to_log(
-    email,
-    instance_type,
-    instance_name,
-    instance_id,
-    region,
-    action,
-    tag,
-    result,
-    old_date,
-    new_date,
-    message,
-):
-    return {
-        "email": email,
-        "instance_type": instance_type,
-        "instance_name": instance_name,
-        "instance_id": instance_id,
-        "region": region,
-        "action": action,
-        "tag": tag,
-        "result": result,
-        "old_date": old_date,
-        "new_date": new_date,
-        "message": message,
-    }
+# def add_to_log(
+#     email,
+#     instance_type,
+#     instance_name,
+#     instance_id,
+#     region,
+#     action,
+#     tag,
+#     result,
+#     old_date,
+#     new_date,
+#     message,
+# ):
+#     return {
+#         "email": email,
+#         "instance_type": instance_type,
+#         "instance_name": instance_name,
+#         "instance_id": instance_id,
+#         "region": region,
+#         "action": action,
+#         "tag": tag,
+#         "result": result,
+#         "old_date": old_date,
+#         "new_date": new_date,
+#         "message": message,
+#     }
 
 
 def date_or_none(
