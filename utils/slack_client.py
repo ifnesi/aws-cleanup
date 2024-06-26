@@ -84,7 +84,8 @@ class SlackClient:
         text: str,
         email: str,
     ):
-        if email not in self.user_map:
+        user_map = self.user_map.get(email)
+        if not user_map:
             r = requests.post(
                 url=self._url_dm,
                 headers=self.headers,
@@ -93,16 +94,21 @@ class SlackClient:
                 },
             )
             logging.debug("[SLACK EMAIL LOOKUP RESPONSE] {}".format(r.text))
-            self.user_map[email] = r.json().get("user", dict()).get("id")
+            user_map = r.json().get("user", dict()).get("id")
+            if user_map:
+                self.user_map[email] = user_map
 
-        if self.user_map[email]:
+        if user_map:
             return self.send_text(
                 text,
-                channel_id=self.user_map[email],
+                channel_id=user_map,
             )
 
         else:
             # For now, instances where we can't find the user will be dumped to the main channel
             return self.send_text(
-                "USER NOT FOUND ({}): Not notified for {}".format(email, text)
+                "USER NOT FOUND ({}): Not notified for {}".format(
+                    email,
+                    text,
+                )
             )
