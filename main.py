@@ -282,7 +282,7 @@ if __name__ == "__main__":
                                     old_date=dn_stop_date,
                                     new_date=r["odn_action_date"],
                                     state=state,
-                                    n=r.get("n"),
+                                    # n=r.get("n"),
                                 )
 
                                 detailed_log.append(
@@ -301,7 +301,7 @@ if __name__ == "__main__":
                                     )
                                 )
 
-                                if r["result"] == "complete_action":
+                                if r["complete_action"]:
                                     # On complete:
                                     # Up till now, have:
                                     # * Left notification tags alone (tags are from stop notifications)
@@ -338,7 +338,7 @@ if __name__ == "__main__":
                                         tags_config.get("t_stop_logs"),
                                         "notified:{};stopped:{}".format(
                                             ",".join(
-                                                notif[0] for notif in dn_notification
+                                                str(notif[0]) for notif in dn_notification
                                             ),
                                             d_run_date,
                                         ),
@@ -453,7 +453,7 @@ if __name__ == "__main__":
                                     old_date=dn_terminate_date,
                                     new_date=r["odn_action_date"],
                                     state=state,
-                                    n=r.get("n"),
+                                    # n=r.get("n"),
                                 )
 
                                 detailed_log.append(
@@ -472,7 +472,7 @@ if __name__ == "__main__":
                                     )
                                 )
 
-                                if r["result"] == "complete_action":
+                                if r["complete_action"]:
                                     # On complete, terminate the instance
                                     aws_client.terminate(
                                         instance_id,
@@ -486,7 +486,7 @@ if __name__ == "__main__":
                                         tags_config.get("t_terminate_logs"),
                                         "notified:{};terminated:{}".format(
                                             ",".join(
-                                                notif[0] for notif in dn_notification
+                                                str(notif[0]) for notif in dn_notification
                                             ),
                                             d_run_date,
                                         ),
@@ -568,32 +568,17 @@ if __name__ == "__main__":
         logging.info("Today is {}".format(d_run_date))
         # logging.info("Notification List:")
 
-        # Arbitrary sort order, primarily for cleanliness in output:
-        # * Email
-        # * Type
-        # * Region
-        # * Action
-        # * Result
-        # * Name
-
         actions = ["ignore", "stop", "terminate"]
-        for action in [*actions, [actions]]:
-            if isinstance(action, str):  # actions
-                action_list = sorted(
-                    [x for x in detailed_log if x["action"] == action],
-                    key=sort_key,
+        for action in actions:
+            logging.info(
+                "{} List:".format(
+                    action.upper(),
                 )
-                logging.info(
-                    "{} List:".format(
-                        action.upper(),
-                    )
-                )
-            else:  # ALTERNATE (not in any action)
-                action_list = sorted(
-                    [x for x in detailed_log if x["action"] not in action],
-                    key=sort_key,
-                )
-                logging.info("ALTERNATE List:")
+            )
+            action_list = sorted(
+                [x for x in detailed_log if x["action"] == action],
+                key=sort_key,
+            )
 
             for item in action_list:
                 logging.info(
@@ -610,6 +595,27 @@ if __name__ == "__main__":
                         item["message"],
                     ),
                 )
+        # This is basically the list of items that weren't processed because they were in an unknown state
+        logging.info("UNPROCESSED List:")
+        action_list = sorted(
+            [x for x in detailed_log if x["action"] not in actions],
+            key=sort_key,
+        )
+        for item in action_list:
+            logging.info(
+                json.dumps(
+                    item,
+                    indent=3,
+                    default=datetime_handler,
+                )
+            )
+            slack_client.send_text(
+                "{}{}: {}".format(
+                    "[DRY RUN] " if args.dry_run else "",
+                    item["email"],
+                    item["message"],
+                ),
+            )
 
     except Exception:
         logging.error(sys_exc(sys.exc_info()))

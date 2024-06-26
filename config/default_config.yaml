@@ -47,8 +47,8 @@ notify_messages:
   reset_action_date: "RESET_ACTION_DATE: Updating {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region}: {action} date changed from {old_date} to *{new_date}* (tag `[{tag}]`)"
   complete_action: "COMPLETE_ACTION: Completed {action} on {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} (tag `[{tag}]`)"
   transition_action: "TRANSITION_ACTION: Added new {action} on {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} on *{new_date}* (tag `[{tag}]`)"
-  past_bump_notification: "PAST_BUMP_NOTIFICATION: Missing #{n} notification: will {action} {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} on *{new_date}* (previously set to {old_date}) (tag `[{tag}]`)"
-  send_notification: "SEND_NOTIFICATION: Sending #{n} {action} notification for {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region}: will {action} on *{new_date}* (tag `[{tag}]`)"
+  past_bump_notification: "PAST_BUMP_NOTIFICATION: Missing #__N__ notification: will {action} {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} on *{new_date}* (previously set to {old_date}) (tag `[{tag}]`)"
+  send_notification: "SEND_NOTIFICATION: Sending #__N__ {action} notification for {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region}: will {action} on *{new_date}* (tag `[{tag}]`)"
   log_no_notification: "LOG_NO_NOTIFICATION: Will {action} {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} on *{new_date}* (tag `[{tag}]`)"
   ignore_other_states: "IGNORE_OTHER_STATES: Ignoring {instance_type} {instance_name} [`{instance_id}`] in region {region} because its state is {state}"
   # Not currently passing in exception value, because it would require adding a different passed-in parameters to NOTIFY_MESSAGES

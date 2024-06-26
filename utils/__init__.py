@@ -41,7 +41,8 @@ def determine_action(
     - ...
     - odn_notification_n: New dn_notification_n
     - odn_action_date
-    - result ENUM
+    - result: string result
+    - complete_action: boolean
     All actual changes (tags and/or instance modification) occurs in calling code, not here.
     """
     odn_notif = dict()
@@ -73,6 +74,7 @@ def determine_action(
             **odn_notif_none,
             "odn_action_date": d_run_date + datetime.timedelta(days=i_default_days),
             "result": notify_messages_config.get("add_action_date"),
+            "complete_action": False,
         }
 
     elif idn_action_date - d_run_date > datetime.timedelta(days=i_max_days):
@@ -81,6 +83,7 @@ def determine_action(
             **odn_notif_none,
             "odn_action_date": d_run_date + datetime.timedelta(days=i_max_days),
             "result": notify_messages_config.get("reset_action_date"),
+            "complete_action": False,
         }
 
     elif idn_action_date <= d_run_date:
@@ -98,12 +101,14 @@ def determine_action(
                 ][0]
             if notif[0] is None:
                 # message = "Set stop date to today + N (missing notifications)"
+                # Kind of prefer using String `replace()` rather than passing back a variable just for this condition
                 return {
                     **odn_notif_aux,
                     "odn_action_date": d_run_date
                     + datetime.timedelta(days=max_notif_days - n),
-                    "result": notify_messages_config.get("past_bump_notification"),
-                    "n": n + 1,
+                    "result": notify_messages_config.get("past_bump_notification").replace("__N__", str(n + 1)),
+                    # "n": n + 1,
+                    "complete_action": False,
                 }
 
         # message = "Complete action"
@@ -114,6 +119,7 @@ def determine_action(
             **odn_notif_aux,
             "odn_action_date": d_run_date,
             "result": notify_messages_config.get("complete_action"),
+            "complete_action": True,
         }
 
     else:
@@ -134,8 +140,9 @@ def determine_action(
                 return {
                     **odn_notif_aux,
                     "odn_action_date": idn_action_date,
-                    "result": notify_messages_config.get("send_notification"),
-                    "n": n + 1,
+                    "result": notify_messages_config.get("send_notification").replace("__N__", str(n + 1)),
+                    "complete_action": False,
+                    # "n": n + 1,
                 }
 
         # message = "Log without notification"
@@ -146,6 +153,7 @@ def determine_action(
             **odn_notif_aux,
             "odn_action_date": idn_action_date,
             "result": notify_messages_config.get("log_no_notification"),
+            "complete_action": False,
         }
 
 
@@ -160,6 +168,13 @@ def iso_format(date: str):
     return result
 
 
+# Arbitrary sort order, primarily for cleanliness in output:
+# * Email
+# * Type
+# * Region
+# * Action
+# * Result
+# * Name
 def sort_key(x):
     return " ".join(
         [
