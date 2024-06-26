@@ -78,8 +78,8 @@ class AWSClient:
         self,
         instance_id,
         instance_name,
-        key,
-        value,
+        tag,
+        new_value,
         old_value,
     ):
         # TODO: In the future, could batch this up, for now doing it one at a time
@@ -89,9 +89,9 @@ class AWSClient:
                 instance_name,
                 instance_id,
                 self._region_name,
-                key,
+                tag,
                 old_value,
-                value,
+                new_value,
             )
         )
         if not self._dry_run:
@@ -102,11 +102,30 @@ class AWSClient:
                 Resources=[instance_id],
                 Tags=[
                     {
-                        "Key": key,
-                        "Value": str(value),
+                        "Key": tag,
+                        "Value": str(new_value),
                     }
                 ],
             )
+
+    def do_action(
+        self,
+        action: str,
+        instance_type: str,
+        instance_id: str,
+        instance_name: str,
+    ):
+        if action == "stop":
+            self.stop(
+                instance_id=instance_id,
+                instance_name=instance_name,
+            )
+        elif action == "terminate":
+            self.terminate(
+                instance_id=instance_id,
+                instance_name=instance_name,
+            )
+        
 
     def stop(
         self,

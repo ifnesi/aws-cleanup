@@ -9,13 +9,19 @@ override:
       - Name: tag:aws_cleaner/filter
         Values:
           - justin
+      # - Name: tag:Name
+      #   Values:
+      #     - stop_future_notification_1
+      #     - stop_future_notification_2
+      #     - stop_future_notification_3
 
 slack:
   channel_key: channel_id
   token_secret_key: token
   token_secret_name: justin/slack_token
   token_secret_region: us-east-1
-  rest_endpoint: https://slack.com/api/chat.postMessage
+  chat_post_message_endpoint: https://slack.com/api/chat.postMessage
+  user_lookup_endpoint: https://slack.com/api/users.lookupByEmail
 
 general:
   max_stop_days: 62
@@ -43,13 +49,13 @@ tags:
     aws_cleaner/notifications/3: 2
 
 notify_messages:
-  add_action_date: "ADD_ACTION_DATE: Added {action} date to {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region}, set to *{new_date}* (tag `[{tag}]`)"
-  reset_action_date: "RESET_ACTION_DATE: Updating {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region}: {action} date changed from {old_date} to *{new_date}* (tag `[{tag}]`)"
-  complete_action: "COMPLETE_ACTION: Completed {action} on {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} (tag `[{tag}]`)"
-  transition_action: "TRANSITION_ACTION: Added new {action} on {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} on *{new_date}* (tag `[{tag}]`)"
-  past_bump_notification: "PAST_BUMP_NOTIFICATION: Missing #{n} notification: will {action} {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} on *{new_date}* (previously set to {old_date}) (tag `[{tag}]`)"
-  send_notification: "SEND_NOTIFICATION: Sending #{n} {action} notification for {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region}: will {action} on *{new_date}* (tag `[{tag}]`)"
-  log_no_notification: "LOG_NO_NOTIFICATION: Will {action} {state} {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} on *{new_date}* (tag `[{tag}]`)"
-  ignore_other_states: "IGNORE_OTHER_STATES: Ignoring {instance_type} {instance_name} [`{instance_id}`] in region {region} because its state is {state}"
+  ADD_ACTION_DATE: "Added {action} date to {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`], set to *{new_date}* (tag `[{tag}]`)"
+  RESET_ACTION_DATE: "Updating {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`]: {action} date changed from {old_date} to *{new_date}* (tag `[{tag}]`)"
+  COMPLETE_ACTION: "Completed {action} on {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`] (tag `[{tag}]`)"
+  TRANSITION_ACTION: "Initial notification: will {action} {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`] on *{new_date}* (tag `[{tag}]`)"
+  PAST_BUMP_NOTIFICATION: "Notification #__N__ for {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`]: will {action} on *{new_date}* (previously set to *{old_date}*) (tag `[{tag}]`)"
+  SEND_NOTIFICATION: "Notification #__N__ for {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`]: will {action} on *{new_date}* (tag `[{tag}]`)"
+  LOG_NO_NOTIFICATION: "Will {action} {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`] on *{new_date}* (tag `[{tag}]`)"
+  IGNORE_OTHER_STATES: "Ignoring {instance_type} {instance_name} [`{region}`/`{instance_id}`] because its state is {state}"
   # Not currently passing in exception value, because it would require adding a different passed-in parameters to NOTIFY_MESSAGES
-  skip_exception: "SKIP_EXCEPTION: Skipping {instance_type} instance '{instance_name}' [`{instance_id}`] in region {region} because it has {tag} set"
+  SKIP_EXCEPTION: "Skipping {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`] because it has {tag} set"

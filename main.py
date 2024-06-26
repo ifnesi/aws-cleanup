@@ -33,7 +33,6 @@ import datetime
 from utils import (
     determine_action,
     sort_key,
-    add_to_log,
     date_or_none,
     sys_exc,
     iso_format,
@@ -41,6 +40,7 @@ from utils import (
 )
 from utils.aws_client import AWSClient
 from utils.slack_client import SlackClient
+from utils.result import Result
 
 
 ###############################
@@ -184,14 +184,6 @@ if __name__ == "__main__":
                 instance_name = tags.get(tags_config.get("t_name"))
 
                 # 'dn_' means 'either a Datetime.date or None'
-                dn_stop_date = date_or_none(
-                    tags,
-                    tags_config.get("t_stop_date"),
-                )
-                dn_terminate_date = date_or_none(
-                    tags,
-                    tags_config.get("t_terminate_date"),
-                )
                 dn_notification = (
                     list()
                 )  # [(tag_name_value_1, days_1, tag_name_1), (tag_name_value_2, days_2, tag_name_2), ..., (tag_name_value_n, days_n, tag_name_n)]
@@ -222,338 +214,263 @@ if __name__ == "__main__":
                     )
                 )
 
+                # TODO: combine ASG and exception test
                 if autoscaling_group is None:
                     if exception is None:
-                        if state == "running":
-                            if True:
-                                # Returns dict with the following:
-                                # odn_notification_1: New dn_notification_1
-                                # odn_notification_2: New dn_notification_2
-                                # ...
-                                # odn_notification_n: New dn_notification_n
-                                # odn_action_date
-                                # result ENUM
-                                # n: Notification number (if any)
-
-                                r = determine_action(
-                                    idn_action_date=dn_stop_date,
-                                    idn_notification=dn_notification,
-                                    i_default_days=general_config.get(
-                                        "default_stop_days"
-                                    ),
-                                    i_max_days=general_config.get("max_stop_days"),
-                                    notify_messages_config=notify_messages_config,
-                                    d_run_date=d_run_date,
-                                )
-
-                                # Update all tags that have changed
-                                tags_changed = [
-                                    (
-                                        tags_config.get("t_stop_date"),
-                                        dn_stop_date,
-                                        r["odn_action_date"],
-                                    )
-                                ]
-                                for n, notif in enumerate(dn_notification):
-                                    tags_changed.append(
-                                        (
-                                            notif[2],  # tag_name_n
-                                            notif[0],  # tag_name_value_n
-                                            r["odn_notification_{}".format(n + 1)],
-                                        )
-                                    )
-                                for tag in tags_changed:
-                                    if tag[1] != tag[2]:
-                                        aws_client.update_tag(
-                                            instance_id,
-                                            instance_name,
-                                            tag[0],  # tag_name_value_n
-                                            tag[2],  # tag_name_n
-                                            tag[1],  # days_n
-                                        )
-
-                                message = r["result"].format(
-                                    instance_type="EC2",
-                                    instance_name=instance_name,
-                                    instance_id=instance_id,
-                                    region=region,
-                                    action="stop",
-                                    tag=tags_config.get("t_stop_date"),
-                                    old_date=dn_stop_date,
-                                    new_date=r["odn_action_date"],
-                                    state=state,
-                                    n=r.get("n"),
-                                )
-
-                                detailed_log.append(
-                                    add_to_log(
-                                        email=owner_email,
-                                        instance_type="EC2",
-                                        instance_name=instance_name,
-                                        instance_id=instance_id,
-                                        region=region,
-                                        action="stop",
-                                        tag=tags_config.get("t_stop_date"),
-                                        result=r["result"],
-                                        old_date=dn_stop_date,
-                                        new_date=r["odn_action_date"],
-                                        message=message,
-                                    )
-                                )
-
-                                if r["result"] == "complete_action":
-                                    # On complete:
-                                    # Up till now, have:
-                                    # * Left notification tags alone (tags are from stop notifications)
-                                    # * Added a STOP/COMPLETE ACTION log
-                                    # Now need to do the following: # TODO FIX THIS LOGIC, something is missing here
-                                    # * Stop the instance
-                                    # * TODO: Add "Summary stop tag"
-                                    # * Add a termination date
-                                    # * Set notification tags back to None
-                                    # * Add a TERMINATE/TRANSITION log
-                                    # * Add a TERMINATE/Add tag log?
-                                    aws_client.stop(
-                                        instance_id,
-                                        instance_name,
-                                    )
-
-                                    aws_client.update_tag(
-                                        instance_id,
-                                        instance_name,
-                                        tags_config.get("t_terminate_date"),
-                                        d_run_date
-                                        + datetime.timedelta(
-                                            days=general_config.get(
-                                                "default_terminate_days"
-                                            )
-                                        ),
-                                        None,
-                                    )
-
-                                    # Summary stop log
-                                    aws_client.update_tag(
-                                        instance_id,
-                                        instance_name,
-                                        tags_config.get("t_stop_logs"),
-                                        "notified:{};stopped:{}".format(
-                                            ",".join(
-                                                notif[0] for notif in dn_notification
-                                            ),
-                                            d_run_date,
-                                        ),
-                                        None,
-                                    )
-
-                                    message = notify_messages_config[
-                                        "transition_action"
-                                    ].format(
-                                        instance_type="EC2",
-                                        instance_name=instance_name,
-                                        instance_id=instance_id,
-                                        region=region,
-                                        action="terminate",
-                                        tag=tags_config.get("t_terminate_date"),
-                                        old_date=d_run_date,  # Date of transition, not new terminate date
-                                        new_date=d_run_date
-                                        + datetime.timedelta(
-                                            days=general_config.get(
-                                                "default_terminate_days"
-                                            )
-                                        ),  # New terminate date
-                                        state="stopped",  # Have just stopped the instance
-                                    )
-
-                                    detailed_log.append(
-                                        add_to_log(
-                                            email=owner_email,
-                                            instance_type="EC2",
-                                            instance_name=instance_name,
-                                            instance_id=instance_id,
-                                            region=region,
-                                            action="terminate",
-                                            tag=tags_config.get("t_terminate_date"),
-                                            result="transition_action",
-                                            old_date=None,
-                                            new_date=d_run_date
-                                            + datetime.timedelta(
-                                                days=general_config.get(
-                                                    "default_terminate_days"
-                                                )
-                                            ),
-                                            message=message,
-                                        )
-                                    )
-
-                                    for tag in dn_notification:
-                                        aws_client.update_tag(
-                                            instance_id,
-                                            instance_name,
-                                            tag[2],
-                                            None,
-                                            tag[0],
-                                        )
-                            else:
-                                pass  # Placeholder for 'override' behavior
-
-                        elif state == "stopped":
-                            if True:
-                                # Returns dict with the following:
-                                # odn_notification_1: New dn_notification_1
-                                # odn_notification_2: New dn_notification_2
-                                # ...
-                                # odn_notification_n: New dn_notification_n
-                                # odn_action_date
-                                # result ENUM
-
-                                r = determine_action(
-                                    idn_action_date=dn_terminate_date,
-                                    idn_notification=dn_notification,
-                                    i_default_days=general_config.get(
-                                        "default_terminate_days"
-                                    ),
-                                    i_max_days=general_config.get("max_terminate_days"),
-                                    notify_messages_config=notify_messages_config,
-                                    d_run_date=d_run_date,
-                                )
-
-                                # Update all tags that have changed
-                                tags_changed = [
-                                    (
-                                        tags_config.get("t_terminate_date"),
-                                        dn_terminate_date,
-                                        r["odn_action_date"],
-                                    )
-                                ]
-                                for n, notif in enumerate(dn_notification):
-                                    tags_changed.append(
-                                        (
-                                            notif[2],
-                                            notif[0],
-                                            r["odn_notification_{n}".format(n=n + 1)],
-                                        )
-                                    )
-                                for tag in tags_changed:
-                                    if tag[1] != tag[2]:
-                                        aws_client.update_tag(
-                                            instance_id,
-                                            instance_name,
-                                            tag[0],
-                                            tag[2],
-                                            tag[1],
-                                        )
-
-                                message = r["result"].format(
-                                    instance_type="EC2",
-                                    instance_name=instance_name,
-                                    instance_id=instance_id,
-                                    region=region,
-                                    action="terminate",
-                                    tag=tags_config.get("t_stop_date"),
-                                    old_date=dn_terminate_date,
-                                    new_date=r["odn_action_date"],
-                                    state=state,
-                                    n=r.get("n"),
-                                )
-
-                                detailed_log.append(
-                                    add_to_log(
-                                        email=owner_email,
-                                        instance_type="EC2",
-                                        instance_name=instance_name,
-                                        instance_id=instance_id,
-                                        region=region,
-                                        action="terminate",
-                                        tag=tags_config.get("t_terminate_date"),
-                                        result=r["result"],
-                                        old_date=dn_terminate_date,
-                                        new_date=r["odn_action_date"],
-                                        message=message,
-                                    )
-                                )
-
-                                if r["result"] == "complete_action":
-                                    # On complete, terminate the instance
-                                    aws_client.terminate(
-                                        instance_id,
-                                        instance_name,
-                                    )
-
-                                    # Summary stop log
-                                    aws_client.update_tag(
-                                        instance_id,
-                                        instance_name,
-                                        tags_config.get("t_terminate_logs"),
-                                        "notified:{};terminated:{}".format(
-                                            ",".join(
-                                                notif[0] for notif in dn_notification
-                                            ),
-                                            d_run_date,
-                                        ),
-                                        None,
-                                    )
-                                    # TODO: Add additional log for this?
-                            else:
-                                pass  # Placeholder for 'override' behavior
-
-                        else:  # State is not running or stopped
-                            message = notify_messages_config[
-                                "ignore_other_states"
-                            ].format(
-                                instance_type="EC2",
-                                instance_name=instance_name,
-                                instance_id=instance_id,
-                                region=region,
-                                action="ignore",
-                                tag=state,  # This is a hack
-                                old_date=d_run_date,
-                                new_date=d_run_date,
-                                state=state,
+                        state_map = {
+                            "running": {
+                                "action": "stop",
+                                "action_tag_field_name": "t_stop_date",
+                                "default_field_name": "default_stop_days",
+                                "max_field_name": "max_stop_days",
+                                "action_complete_logs_tag_field_name": "t_stop_logs",
+                                "next_action": "terminate",
+                                "next_action_tag_field_name": "t_terminate_date",
+                                "next_action_default_field_name": "default_terminate_days",
+                            },
+                            "stopped": {
+                                "action": "terminate",
+                                "action_tag_field_name": "t_terminate_date",
+                                "default_field_name": "default_terminate_days",
+                                "max_field_name": "max_terminate_days",
+                                "action_complete_logs_tag_field_name": "t_terminate_logs",
+                                "next_action": None,
+                                "next_action_tag_field_name": None,
+                                "next_action_default_field_name": None,
+                            },
+                        }
+                        if state in state_map:
+                            action = state_map[state]["action"]
+                            action_tag = tags_config.get(
+                                state_map[state]["action_tag_field_name"]
+                            )
+                            # Current value of action date
+                            action_current_date = date_or_none(
+                                tags, action_tag
+                            )
+                            action_default_days = general_config.get(
+                                state_map[state]["default_field_name"]
+                            )
+                            action_max_days = general_config.get(
+                                state_map[state]["max_field_name"]
+                            )
+                            complete_logs_tag = tags_config.get(
+                                state_map[state]["action_complete_logs_tag_field_name"]
+                            )
+                            next_action = state_map[state]["next_action"]
+                            next_action_tag = tags_config.get(
+                                state_map[state]["next_action_tag_field_name"]
+                            )
+                            next_action_default_days = general_config.get(
+                                state_map[state]["next_action_default_field_name"]
                             )
 
-                            detailed_log.append(
-                                add_to_log(
-                                    email=owner_email,
-                                    instance_type="EC2",
-                                    instance_name=instance_name,
-                                    instance_id=instance_id,
-                                    region=region,
-                                    action="ignore",
-                                    tag=state,  # again, this is a hack
-                                    result="ignore_other_states",
-                                    old_date=d_run_date,
-                                    new_date=d_run_date,
-                                    message=message,
+                            r = determine_action(
+                                idn_action_date=action_current_date,
+                                idn_notification=dn_notification,
+                                i_default_days=action_default_days,
+                                i_max_days=action_max_days,
+                                notify_messages_config=notify_messages_config,
+                                d_run_date=d_run_date,
+                            )
+
+                            # Update all tags that have changed
+                            tags_changed = [
+                                (
+                                    action_tag,
+                                    action_current_date,
+                                    r["odn_action_date"],
                                 )
+                            ]
+                            for n, notif in enumerate(dn_notification):
+                                tags_changed.append(
+                                    (
+                                        notif[2],  # tag_name_n
+                                        notif[0],  # tag_name_value_n
+                                        r["odn_notification_{}".format(n + 1)],
+                                    )
+                                )
+
+                            for tag in tags_changed:
+                                if tag[1] != tag[2]:
+                                    aws_client.update_tag(
+                                        instance_id=instance_id,
+                                        instance_name=instance_name,
+                                        tag=tag[0],  # key
+                                        new_value=tag[2],  # value
+                                        old_value=tag[1],  # days_n
+                                    )
+
+                            message_details = {
+                                "email": owner_email,
+                                "instance_type": "EC2",
+                                "instance_name": instance_name,
+                                "instance_id": instance_id,
+                                "region": region,
+                                "action": action,
+                                "tag": action_tag,
+                                "old_date": action_current_date,
+                                "new_date": r["odn_action_date"],
+                                "state": state,
+                                "result": r["result"],
+                            }
+
+                            # Add message to message_details
+                            message_details["message"] = r["message"].format(**message_details)
+
+                            detailed_log.append(message_details)
+
+                            slack_client.send_text(
+                                "{}{} [{}]: {}".format(
+                                    "[DRY RUN] " if args.dry_run else "",
+                                    message_details["email"],
+                                    message_details["result"],
+                                    message_details["message"],
+                                ),
+                            )
+
+                            if message_details["email"] and message_details["result"] not in (
+                                Result.LOG_NO_NOTIFICATION,
+                            ) and not args.dry_run:
+                                slack_client.send_dm(
+                                    email = message_details["email"],
+                                    text = message_details["message"],
+                                )
+
+                            if r["result"] == Result.COMPLETE_ACTION:
+                                # TODO: Right now, the slack notification for this is sent before the completion events are run; do we need to send Slack notification again later?
+                                
+                                # Now need to do the following: # TODO FIX THIS LOGIC, something is missing here
+                                # * Stop the instance
+                                # * Add a termination date - done
+                                # * Add a TERMINATE/TRANSITION log - done
+                                # * TODO: Add "Summary stop tag" - done
+                                # * Clear notifications - done
+                                aws_client.do_action(
+                                    action=action,
+                                    instance_type="EC2",
+                                    instance_id=instance_id,
+                                    instance_name=instance_name,
+                                )
+
+                                # Populate completion logs tag
+                                aws_client.update_tag(
+                                    instance_id=instance_id,
+                                    instance_name=instance_name,
+                                    tag=complete_logs_tag,
+                                    new_value="notified:{};{}:{}".format(
+                                        ",".join(
+                                            str(notif[0]) for notif in dn_notification
+                                        ),
+                                        action,
+                                        d_run_date,
+                                    ),
+                                    old_value=None,
+                                )
+
+                                # Clear notification tags
+                                for tag in dn_notification:
+                                    aws_client.update_tag(
+                                        instance_id=instance_id,
+                                        instance_name=instance_name,
+                                        tag=tag[2],
+                                        new_value=None,
+                                        old_value=tag[0],
+                                    )
+
+                                if next_action:
+                                    # Create next action tag
+                                    aws_client.update_tag(
+                                        instance_id=instance_id,
+                                        instance_name=instance_name,
+                                        tag=next_action_tag,
+                                        new_value=d_run_date + datetime.timedelta(days=next_action_default_days),
+                                        old_value=None
+                                    )
+
+                                    transition_message_details = dict(message_details)
+                                    transition_message_details["action"] = next_action
+                                    transition_message_details["tag"] = next_action_tag
+                                    transition_message_details["old_date"] = None
+                                    transition_message_details["new_date"] = d_run_date + datetime.timedelta(days=next_action_default_days)
+                                    transition_message_details["state"] = "stopped"
+                                    transition_message_details["result"] = Result.TRANSITION_ACTION
+                                    transition_message_details["message"] = notify_messages_config.get(Result.TRANSITION_ACTION).format(**transition_message_details)
+
+                                    detailed_log.append(transition_message_details)
+
+                                    slack_client.send_text(
+                                        "{}{} [{}]: {}".format(
+                                            "[DRY RUN] " if args.dry_run else "",
+                                            transition_message_details["email"],
+                                            transition_message_details["result"],
+                                            transition_message_details["message"],
+                                        ),
+                                    )
+
+                                    if transition_message_details["email"] and not args.dry_run:
+                                        slack_client.send_dm(
+                                            email = transition_message_details["email"],
+                                            text = transition_message_details["message"],
+                                        )
+
+                        else:  # State not in state_map
+                            message_details = {
+                                "email": owner_email,
+                                "instance_type": "EC2",
+                                "instance_name": instance_name,
+                                "instance_id": instance_id,
+                                "region": region,
+                                "action": "ignore",
+                                "tag": state,  # again, this is a hack
+                                "result": Result.IGNORE_OTHER_STATES,
+                                "old_date": d_run_date,
+                                "new_date": d_run_date,
+                                "state": state,
+                            }
+
+                            message_text = notify_messages_config.get(Result.IGNORE_OTHER_STATES).format(**message_details)
+
+                            message_details["message"] = message_text
+
+                            detailed_log.append(message_details)
+
+                            slack_client.send_text(
+                                "{}{} [{}]: {}".format(
+                                    "[DRY RUN] " if args.dry_run else "",
+                                    message_details["email"],
+                                    message_details["result"],
+                                    message_details["message"],
+                                ),
                             )
 
                     else:  # Exception exists, add to notify list
-                        message = notify_messages_config["skip_exception"].format(
-                            instance_type="EC2",
-                            instance_name=instance_name,
-                            instance_id=instance_id,
-                            region=region,
-                            action="skip_exception",
-                            tag=exception,
-                            old_date=d_run_date,
-                            new_date=d_run_date,
-                            state=state,
-                        )
+                        message_details = {
+                            "email": owner_email,
+                            "instance_type": "EC2",
+                            "instance_name": instance_name,
+                            "instance_id": instance_id,
+                            "region": region,
+                            "action": "skip_exception",
+                            "tag": exception,  # See if this is right, I think this is wrong
+                            "result": Result.SKIP_EXCEPTION,
+                            "old_date": d_run_date,
+                            "new_date": d_run_date,
+                            "state": state,
+                        }
+                        message_text = notify_messages_config.get(Result.SKIP_EXCEPTION).format(**message_details)
 
-                        detailed_log.append(
-                            add_to_log(
-                                email=owner_email,
-                                instance_type="EC2",
-                                instance_name=instance_name,
-                                instance_id=instance_id,
-                                region=region,
-                                action="skip_exception",
-                                tag=exception,  # This is a hack
-                                result="skip_exception",
-                                old_date=d_run_date,
-                                new_date=d_run_date,
-                                message=message,
-                            )
+                        message_details["message"] = message_text
+                        
+                        detailed_log.append(message_details)
+
+                        slack_client.send_text(
+                            "{}{} [{}]: {}".format(
+                                "[DRY RUN] " if args.dry_run else "",
+                                message_details["email"],
+                                message_details["result"],
+                                message_details["message"],
+                            ),
                         )
 
                 else:  # In autoscaling group
@@ -565,35 +482,22 @@ if __name__ == "__main__":
                     )
                     # TODO: Add log for these
 
-        logging.info("Today is {}".format(d_run_date))
-        # logging.info("Notification List:")
 
-        # Arbitrary sort order, primarily for cleanliness in output:
-        # * Email
-        # * Type
-        # * Region
-        # * Action
-        # * Result
-        # * Name
+        # Start output and notifications
+        # TODO: Move Slack notifications closer to actual events
+        logging.info("Today is {}".format(d_run_date))
 
         actions = ["ignore", "stop", "terminate"]
-        for action in [*actions, [actions]]:
-            if isinstance(action, str):  # actions
-                action_list = sorted(
-                    [x for x in detailed_log if x["action"] == action],
-                    key=sort_key,
+        for action in actions:
+            logging.info(
+                "{} List:".format(
+                    action.upper(),
                 )
-                logging.info(
-                    "{} List:".format(
-                        action.upper(),
-                    )
-                )
-            else:  # ALTERNATE (not in any action)
-                action_list = sorted(
-                    [x for x in detailed_log if x["action"] not in action],
-                    key=sort_key,
-                )
-                logging.info("ALTERNATE List:")
+            )
+            action_list = sorted(
+                [x for x in detailed_log if x["action"] == action],
+                key=sort_key,
+            )
 
             for item in action_list:
                 logging.info(
@@ -603,16 +507,47 @@ if __name__ == "__main__":
                         default=datetime_handler,
                     )
                 )
-                slack_client.send_text(
-                    "{}{}: {}".format(
-                        "[DRY RUN] " if args.dry_run else "",
-                        item["email"],
-                        item["message"],
-                    ),
+                # slack_client.send_text(
+                #     "{}{} [{}]: {}".format(
+                #         "[DRY RUN] " if args.dry_run else "",
+                #         item["email"],
+                #         item["result"],
+                #         item["message"],
+                #     ),
+                # )
+                # if item["email"] and item["result"] not in (
+                #     Result.IGNORE_OTHER_STATES,
+                #     Result.LOG_NO_NOTIFICATION,
+                #     Result.SKIP_EXCEPTION,
+                # ) and not args.dry_run:
+                #     slack_client.send_dm(
+                #         email = item["email"],
+                #         text = item["message"],
+                #     )
+        # This is basically the list of items that weren't processed because they were in an unknown state
+        logging.info("UNPROCESSED List:")
+        action_list = sorted(
+            [x for x in detailed_log if x["action"] not in actions],
+            key=sort_key,
+        )
+        for item in action_list:
+            logging.info(
+                json.dumps(
+                    item,
+                    indent=3,
+                    default=datetime_handler,
                 )
+            )
+            # slack_client.send_text(
+            #     "{}{}: {}".format(
+            #         "[DRY RUN] " if args.dry_run else "",
+            #         item["email"],
+            #         item["message"],
+            #     ),
+            # )
 
-    except Exception:
-        logging.error(sys_exc(sys.exc_info()))
+    # except Exception:
+    #     logging.error(sys_exc(sys.exc_info()))
 
     except KeyboardInterrupt:
         logging.info("Aborted by user!")

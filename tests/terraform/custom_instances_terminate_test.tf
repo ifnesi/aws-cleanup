@@ -215,6 +215,7 @@ resource "aws_instance" "terminate_future_notification_2" {
   tags = merge({
     "owner_email"       = (var.owner_email)
     (local.t_terminate_date) = local.d_3
+    (local.t_notification_1) = local.d_p1
     "Name"              = "terminate_future_notification_2"
     },
     var.additional_tags,
