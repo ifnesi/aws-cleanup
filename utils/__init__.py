@@ -186,35 +186,6 @@ def sort_key(x):
         ]
     )
 
-
-# def add_to_log(
-#     email,
-#     instance_type,
-#     instance_name,
-#     instance_id,
-#     region,
-#     action,
-#     tag,
-#     result,
-#     old_date,
-#     new_date,
-#     message,
-# ):
-#     return {
-#         "email": email,
-#         "instance_type": instance_type,
-#         "instance_name": instance_name,
-#         "instance_id": instance_id,
-#         "region": region,
-#         "action": action,
-#         "tag": tag,
-#         "result": result,
-#         "old_date": old_date,
-#         "new_date": new_date,
-#         "message": message,
-#     }
-
-
 def date_or_none(
     tags,
     tag,
