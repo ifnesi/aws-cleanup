@@ -17,7 +17,7 @@
 #
 import logging
 import datetime
-from .result import Result
+from utils.result import Result
 
 
 def determine_action(
@@ -106,9 +106,11 @@ def determine_action(
                 return {
                     **odn_notif_aux,
                     "odn_action_date": d_run_date
-                        + datetime.timedelta(days=max_notif_days - n),
+                    + datetime.timedelta(days=max_notif_days - n),
                     "result": Result.PAST_BUMP_NOTIFICATION,
-                    "message": notify_messages_config.get(Result.PAST_BUMP_NOTIFICATION).replace("__N__", str(n + 1)),
+                    "message": notify_messages_config.get(
+                        Result.PAST_BUMP_NOTIFICATION
+                    ).replace("__N__", str(n + 1)),
                 }
 
         # Result: Complete action
@@ -141,7 +143,9 @@ def determine_action(
                     **odn_notif_aux,
                     "odn_action_date": idn_action_date,
                     "result": Result.SEND_NOTIFICATION,
-                    "message": notify_messages_config.get(Result.SEND_NOTIFICATION).replace("__N__", str(n + 1)),
+                    "message": notify_messages_config.get(
+                        Result.SEND_NOTIFICATION
+                    ).replace("__N__", str(n + 1)),
                 }
 
         # Result: Log without notification
@@ -185,6 +189,7 @@ def sort_key(x):
             x["instance_name"],
         ]
     )
+
 
 def date_or_none(
     tags,

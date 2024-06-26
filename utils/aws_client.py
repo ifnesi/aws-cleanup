@@ -125,7 +125,6 @@ class AWSClient:
                 instance_id=instance_id,
                 instance_name=instance_name,
             )
-        
 
     def stop(
         self,
