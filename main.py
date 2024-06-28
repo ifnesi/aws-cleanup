@@ -286,6 +286,72 @@ if __name__ == "__main__":
                                 "new": r["odn_notification_{}".format(n + 1)],
                             }
 
+                        if r["result"] == Result.COMPLETE_ACTION:
+                            # If we have a 'complete' action, do all of the following
+                            # (before tag updates and Slack notification)
+                            # * Perform the action (stop/terminate)
+                            # * Add an action complete log (including notifications)
+                            # * Clear individual notification tags
+                            # * If there's a next action:
+                                # * Add a next action date tag - done
+                                # * Send a transition notification
+                                # TODO: Right now the transition notification occurs before the complete notification; is this okay?
+
+                            aws_client.do_action(
+                                action=action,
+                                **instance_config,
+                            )
+
+                            tags_changed[complete_logs_tag] = {
+                                "old": None,
+                                "new": "notified:{};{}:{}".format(
+                                    ",".join(
+                                        str(notif[0]) for notif in dn_notification
+                                    ),
+                                    action,
+                                    d_run_date,
+                                )
+                            }
+
+                            # Clear notification tags (set back to None)
+                            for n, notif in enumerate(dn_notification):
+                                tags_changed[notif[2]] = {
+                                    "old": notif[0],
+                                    "new": None,
+                                }
+                            
+                            if next_action:
+                                tags_changed[next_action_tag] = {
+                                    "old": None,
+                                    "new": d_run_date + datetime.timedelta(days=next_action_default_days),
+                                }
+
+                                transition_message_details = dict(message_details)
+                                transition_message_details["action"] = next_action
+                                transition_message_details["tag"] = next_action_tag
+                                transition_message_details["old_date"] = None
+                                transition_message_details["new_date"] = d_run_date + datetime.timedelta(days=next_action_default_days)
+                                transition_message_details["state"] = "stopped"
+                                transition_message_details["result"] = Result.TRANSITION_ACTION
+                                transition_message_details["message"] = notify_messages_config.get(Result.TRANSITION_ACTION).format(**transition_message_details)
+
+                                detailed_log.append(transition_message_details)
+
+                                slack_client.send_text(
+                                    "{}{} [{}]: {}".format(
+                                        "[DRY RUN] " if args.dry_run else "",
+                                        transition_message_details["email"],
+                                        transition_message_details["result"],
+                                        transition_message_details["message"],
+                                    ),
+                                )
+
+                                if transition_message_details["email"] and not args.dry_run:
+                                    slack_client.send_dm(
+                                        email = transition_message_details["email"],
+                                        text = transition_message_details["message"],
+                                    )
+
                         # Filter by tags that have new values
                         updated_tags = {
                             tag: values for tag,values in tags_changed.items() if values["old"] != values["new"]
@@ -328,79 +394,6 @@ if __name__ == "__main__":
                                 email = message_details["email"],
                                 text = message_details["message"],
                             )
-
-                        if r["result"] == Result.COMPLETE_ACTION:
-                            # TODO: Right now, the slack notification for this is sent before the completion events are run; do we need to send Slack notification again later?
-                            
-                            # Now need to do the following: # TODO FIX THIS LOGIC, something is missing here
-                            # * Stop the instance
-                            # * Add a termination date - done
-                            # * Add a TERMINATE/TRANSITION log - done
-                            # * TODO: Add "Summary stop tag" - done
-                            # * Clear notifications - done
-                            aws_client.do_action(
-                                action=action,
-                                **instance_config,
-                            )
-
-                            # Populate completion logs tag
-                            aws_client.update_tag(
-                                **instance_config,
-                                tag=complete_logs_tag,
-                                new_value="notified:{};{}:{}".format(
-                                    ",".join(
-                                        str(notif[0]) for notif in dn_notification
-                                    ),
-                                    action,
-                                    d_run_date,
-                                ),
-                                old_value=None,
-                            )
-
-                            # Clear notification tags
-                            for tag in dn_notification:
-                                aws_client.update_tag(
-                                    **instance_config,
-                                    tag=tag[2],
-                                    new_value=None,
-                                    old_value=tag[0],
-                                )
-
-                            if next_action:
-                                # Create next action tag
-                                aws_client.update_tag(
-                                    **instance_config,
-                                    tag=next_action_tag,
-                                    new_value=d_run_date + datetime.timedelta(days=next_action_default_days),
-                                    old_value=None
-                                )
-
-                                transition_message_details = dict(message_details)
-                                transition_message_details["action"] = next_action
-                                transition_message_details["tag"] = next_action_tag
-                                transition_message_details["old_date"] = None
-                                transition_message_details["new_date"] = d_run_date + datetime.timedelta(days=next_action_default_days)
-                                transition_message_details["state"] = "stopped"
-                                transition_message_details["result"] = Result.TRANSITION_ACTION
-                                transition_message_details["message"] = notify_messages_config.get(Result.TRANSITION_ACTION).format(**transition_message_details)
-
-                                detailed_log.append(transition_message_details)
-
-                                slack_client.send_text(
-                                    "{}{} [{}]: {}".format(
-                                        "[DRY RUN] " if args.dry_run else "",
-                                        transition_message_details["email"],
-                                        transition_message_details["result"],
-                                        transition_message_details["message"],
-                                    ),
-                                )
-
-                                if transition_message_details["email"] and not args.dry_run:
-                                    slack_client.send_dm(
-                                        email = transition_message_details["email"],
-                                        text = transition_message_details["message"],
-                                    )
-
                     else:  # State not in state_map
                         message_details = {
                             **instance_config,
