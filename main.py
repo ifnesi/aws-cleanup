@@ -291,15 +291,14 @@ if __name__ == "__main__":
                                     )
                                 )
 
-                            for tag in tags_changed:
-                                if tag[1] != tag[2]:
-                                    aws_client.update_tag(
-                                        instance_id=instance_id,
-                                        instance_name=instance_name,
-                                        tag=tag[0],  # key
-                                        new_value=tag[2],  # value
-                                        old_value=tag[1],  # days_n
-                                    )
+                            # Filter by tags that have new values
+                            updated_tags = [tag for tag in tags_changed if (tag[1] != tag[2])]
+                            if(len(updated_tags) > 0):
+                                aws_client.update_tags(
+                                    instance_id=instance_id,
+                                    instance_name=instance_name,
+                                    updated_tags=updated_tags,
+                                )
 
                             message_details = {
                                 "email": owner_email,

@@ -84,24 +84,25 @@ class SlackClient:
         text: str,
         email: str,
     ):
-        user_map = self.user_map.get(email)
-        if not user_map:
+        user_id = self.user_map.get(email)
+        if not user_id:
             r = requests.post(
                 url=self._url_dm,
                 headers=self.headers,
-                json={
+                # User lookup doesn't support json, has to be data
+                data={
                     "email": email,
                 },
             )
             logging.debug("[SLACK EMAIL LOOKUP RESPONSE] {}".format(r.text))
-            user_map = r.json().get("user", dict()).get("id")
-            if user_map:
-                self.user_map[email] = user_map
+            user_id = r.json().get("user", dict()).get("id")
+            if user_id:
+                self.user_map[email] = user_id
 
-        if user_map:
+        if user_id:
             return self.send_text(
                 text,
-                channel_id=user_map,
+                channel_id=user_id,
             )
 
         else:

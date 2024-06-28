@@ -74,38 +74,34 @@ class AWSClient:
         )
         return instances
 
-    def update_tag(
+    # tags_changed is a list of tuples, each of which is (tag, old_value, new_value)
+    def update_tags(
         self,
         instance_id,
         instance_name,
-        tag,
-        new_value,
-        old_value,
+        updated_tags,
     ):
         # TODO: In the future, could batch this up, for now doing it one at a time
-        logging.info(
-            "{}Updating of tag on {} [{}] in region {}: setting {} from {} to {}".format(
-                self._dry_run_label,
-                instance_name,
-                instance_id,
-                self._region_name,
-                tag,
-                old_value,
-                new_value,
+        for tag in updated_tags:
+            logging.info(
+                "{}Updating tag on {} [{}] in region {}: changing {} from {} to {}".format(
+                    self._dry_run_label,
+                    instance_name,
+                    instance_id,
+                    self._region_name,
+                    tag[0],
+                    tag[1],
+                    tag[2],
+                )
             )
-        )
+        formatted_tags = [{"Key": tag[0], "Value": str(tag[2])} for tag in updated_tags]
         if not self._dry_run:
             # This is super sloppy; right now we're relying on the fact that this is called after ec2_client has created for the relevant region
             # Later could either pass it in, or create an array of clients for regions
             # str(value) takes care of converting datetime.date to string in isoformat '2024-01-01'
             self.client.create_tags(
                 Resources=[instance_id],
-                Tags=[
-                    {
-                        "Key": tag,
-                        "Value": str(new_value),
-                    }
-                ],
+                Tags=formatted_tags,
             )
 
     def do_action(
