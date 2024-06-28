@@ -23,11 +23,11 @@ slack:
   chat_post_message_endpoint: https://slack.com/api/chat.postMessage
   user_lookup_endpoint: https://slack.com/api/users.lookupByEmail
 
-general:
-  max_stop_days: 62
-  default_stop_days: 31
-  max_terminate_days: 62
-  default_terminate_days: 31
+# general:
+#   max_stop_days: 62
+#   default_stop_days: 31
+#   max_terminate_days: 62
+#   default_terminate_days: 31
 
 tags:
   t_email: email
@@ -35,18 +35,53 @@ tags:
   t_owner_email: owner_email
   t_divvy_owner: divvy_owner
   t_divvy_last_modified_by: divvy_last_modified_by
-  t_autoscaling_group: aws:autoscaling:groupName
-  t_exception: aws_cleaner/cleanup_exception
-  t_stop_date: aws_cleaner/stop_date
-  t_stop_logs: aws_cleaner/stop_notification_log
-  t_terminate_date: aws_cleaner/terminate_date
-  t_terminate_logs: aws_cleaner/terminate_notification_log
+  # t_autoscaling_group: aws:autoscaling:groupName
+  # t_exception: aws_cleaner/cleanup_exception
+  # t_stop_date: aws_cleaner/stop_date
+  # t_stop_logs: aws_cleaner/stop_notification_log
+  # t_terminate_date: aws_cleaner/terminate_date
+  # t_terminate_logs: aws_cleaner/terminate_notification_log
 
   notifications:
     # Important: Notifications will be desc sorted by value (days)
     aws_cleaner/notifications/1: 15
     aws_cleaner/notifications/2: 7
     aws_cleaner/notifications/3: 2
+
+instances:
+  ec2:
+    exception_tags:
+    - aws_cleaner/cleanup_exception
+    - aws:autoscaling:groupName
+    states:
+      running:
+        action: "stop"
+        default_days: 31
+        max_days: 62
+        action_tag: aws_cleaner/stop_date
+        action_log_tag: aws_cleaner/stop_notification_log
+        next_state: "stopped"
+
+        # This is not currently used
+        notifications:
+          aws_cleaner/notifications/1: 15
+          aws_cleaner/notifications/2: 7
+          aws_cleaner/notifications/3: 2
+
+      stopped:
+        action: "terminate"
+        default_days: 31
+        max_days: 62
+        action_tag: aws_cleaner/terminate_date
+        action_log_tag: aws_cleaner/terminate_notification_log
+        # next_state: null
+
+        # This is not currently used
+        notifications:
+          aws_cleaner/notifications/1: 15
+          aws_cleaner/notifications/2: 7
+          aws_cleaner/notifications/3: 2
+
 
 notify_messages:
   ADD_ACTION_DATE: "Added {action} date to {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`], set to *{new_date}* (tag `[{tag}]`)"
@@ -56,7 +91,7 @@ notify_messages:
   PAST_BUMP_NOTIFICATION: "Notification #__N__ for {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`]: will {action} on *{new_date}* (previously set to *{old_date}*) (tag `[{tag}]`)"
   SEND_NOTIFICATION: "Notification #__N__ for {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`]: will {action} on *{new_date}* (tag `[{tag}]`)"
   LOG_NO_NOTIFICATION: "Will {action} {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`] on *{new_date}* (tag `[{tag}]`)"
-  IGNORE_OTHER_STATES: "Ignoring {instance_type} {instance_name} [`{region}`/`{instance_id}`] because its state is {state}"
+  IGNORE_OTHER_STATES: "Ignoring {state} {instance_type} {instance_name} [`{region}`/`{instance_id}`] because its state is {state}"
   # Not currently passing in exception value, because it would require adding a different passed-in parameters to NOTIFY_MESSAGES
-  SKIP_EXCEPTION: "Skipping {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`] because it has {tag} set"
-  IGNORE_ASG: "Ignoring {instance_type} {instance_name} [`{region}`/`{instance_id}`] because it is in autoscaling group {tag}"
+  SKIP_EXCEPTION: "Skipping {state} {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`] because it has {tag} set to {new_date}"
+  # IGNORE_ASG: "Ignoring {instance_type} {instance_name} [`{region}`/`{instance_id}`] because it is in autoscaling group {tag}"

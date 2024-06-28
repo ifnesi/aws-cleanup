@@ -47,8 +47,12 @@ class AWSClient:
         return [
             region["RegionName"] for region in self.client.describe_regions()["Regions"]
         ]
-
+    
     def get_instances(self):
+        if self._service_name == "ec2":
+            return self.get_ec2_instances()
+
+    def get_ec2_instances(self):
         instances = list()
         params = {
             "MaxResults": self._max_results,

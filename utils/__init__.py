@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 import logging
+import json
 import datetime
 from utils.result import Result
 
@@ -227,3 +228,12 @@ def datetime_handler(o):
         ),
     ):
         return str(o)
+
+def log_item(item):
+    logging.info(
+        json.dumps(
+            item,
+            indent=3,
+            default=datetime_handler,
+        )
+    )
