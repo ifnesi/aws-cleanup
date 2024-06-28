@@ -80,21 +80,22 @@ class AWSClient:
         instance_id,
         instance_name,
         updated_tags,
+        **kwargs, # Ignore extra args
     ):
         # TODO: In the future, could batch this up, for now doing it one at a time
-        for tag in updated_tags:
+        for tag, values in updated_tags.items():
             logging.info(
                 "{}Updating tag on {} [{}] in region {}: changing {} from {} to {}".format(
                     self._dry_run_label,
                     instance_name,
                     instance_id,
                     self._region_name,
-                    tag[0],
-                    tag[1],
-                    tag[2],
+                    tag,
+                    values["old"],
+                    values["new"],
                 )
             )
-        formatted_tags = [{"Key": tag[0], "Value": str(tag[2])} for tag in updated_tags]
+        formatted_tags = [{"Key": tag, "Value": str(values["new"])} for tag, values in updated_tags.items()]
         if not self._dry_run:
             # This is super sloppy; right now we're relying on the fact that this is called after ec2_client has created for the relevant region
             # Later could either pass it in, or create an array of clients for regions
@@ -110,6 +111,7 @@ class AWSClient:
         instance_type: str,
         instance_id: str,
         instance_name: str,
+        **kwargs, # Ignore extra args
     ):
         if action == "stop":
             self.stop(

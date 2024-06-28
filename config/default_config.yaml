@@ -59,3 +59,4 @@ notify_messages:
   IGNORE_OTHER_STATES: "Ignoring {instance_type} {instance_name} [`{region}`/`{instance_id}`] because its state is {state}"
   # Not currently passing in exception value, because it would require adding a different passed-in parameters to NOTIFY_MESSAGES
   SKIP_EXCEPTION: "Skipping {instance_type} instance '{instance_name}' [`{region}`/`{instance_id}`] because it has {tag} set"
+  IGNORE_ASG: "Ignoring {instance_type} {instance_name} [`{region}`/`{instance_id}`] because it is in autoscaling group {tag}"
