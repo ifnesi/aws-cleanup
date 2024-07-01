@@ -17,7 +17,7 @@
 #
 import boto3
 import logging
-
+from utils.generic_instance import GenericInstance
 
 class AWSClient:
     def __init__(
@@ -47,12 +47,12 @@ class AWSClient:
         return [
             region["RegionName"] for region in self.client.describe_regions()["Regions"]
         ]
-    
-    def get_instances(self):
-        if self._service_name == "ec2":
-            return self.get_ec2_instances()
 
-    def get_ec2_instances(self):
+    def get_instances(self, tags_config):
+        if self._service_name == "ec2":
+            return self.get_ec2_instances(tags_config=tags_config)
+
+    def get_ec2_instances(self, tags_config):
         instances = list()
         params = {
             "MaxResults": self._max_results,
@@ -61,7 +61,32 @@ class AWSClient:
         while True:
             describe_instances = self.client.describe_instances(**params)
             for reservation in describe_instances.get("Reservations", list()):
-                instances += reservation.get("Instances", list())
+                for instance in reservation.get("Instances", list()):
+                    if "Tags" not in instance:
+                        tags = dict()
+                    else:
+                        tags = {tag["Key"]: tag["Value"] for tag in instance["Tags"]}
+
+                    # Get tags matching any of the exception tags; if any exist, don't process.
+                    # returns a list of tuples; each tuple is ('tag', 'value')
+                    # using a list becuase it's ordered
+                    exceptions = [(e_tag, tags.get(e_tag)) for e_tag in ["aws_cleaner/cleanup_exception", "aws:autoscaling:groupName"] if tags.get(e_tag)]
+
+                    instance = GenericInstance(
+                        type="ec2",
+                        id=instance["InstanceId"],
+                        region=self._region_name,
+                        name=tags.get(tags_config.get("t_name")),
+                        email=tags.get(tags_config.get("t_owner_email"))
+                            or tags.get(tags_config.get("t_email"))
+                            or tags.get(tags_config.get("t_divvy_owner"))
+                            or tags.get(tags_config.get("t_divvy_last_modified_by")),
+                        state=instance["State"]["Name"],
+                        exceptions=exceptions,
+                        tags=tags,
+                    )
+
+                    instances.append(instance)
 
             # Pagination
             next_token = describe_instances.get("NextToken")
@@ -78,11 +103,61 @@ class AWSClient:
         )
         return instances
 
+    # def get_autoscaling_groups(self, tags_config):
+    #     instances = list()
+    #     params = {
+    #         "MaxResults": self._max_results,
+    #         "Filters": self._search_filter,
+    #     }
+    #     while True:
+    #         describe_groups = self.client.describe_auto_scaling_groups(**params)
+    #         for asg in describe_groups.get("AutoScalingGroups", list()):
+    #             if "Tags" not in asg:
+    #                 tags = dict()
+    #             else:
+    #                 tags = {tag["Key"]: tag["Value"] for tag in instance["Tags"]}
+
+    #             # Get tags matching any of the exception tags; if any exist, don't process.
+    #             # returns a list of tuples; each tuple is ('tag', 'value')
+    #             # using a list becuase it's ordered
+    #             exceptions = [(e_tag, tags.get(e_tag)) for e_tag in ["aws_cleaner/cleanup_exception", "aws:autoscaling:groupName"] if tags.get(e_tag)]
+
+    #             instance = GenericInstance(
+    #                 type="ec2",
+    #                 id=instance["InstanceId"],
+    #                 region=self._region_name,
+    #                 name=tags.get(tags_config.get("t_name")),
+    #                 email=tags.get(tags_config.get("t_owner_email"))
+    #                     or tags.get(tags_config.get("t_email"))
+    #                     or tags.get(tags_config.get("t_divvy_owner"))
+    #                     or tags.get(tags_config.get("t_divvy_last_modified_by")),
+    #                 state=instance["State"]["Name"],
+    #                 exceptions=exceptions,
+    #                 tags=tags,
+    #             )
+
+    #             instances.append(instance)
+
+    #         # Pagination
+    #         next_token = describe_instances.get("NextToken")
+    #         if next_token:
+    #             params["NextToken"] = next_token
+    #         else:
+    #             break
+
+    #     logging.info(
+    #         "Total {} instances found: {}".format(
+    #             self._service_name,
+    #             len(instances),
+    #         )
+    #     )
+    #     return instances
+
     # tags_changed is a list of tuples, each of which is (tag, old_value, new_value)
     def update_tags(
         self,
-        instance_id,
-        instance_name,
+        id,
+        name,
         updated_tags,
         **kwargs, # Ignore extra args
     ):
@@ -91,8 +166,8 @@ class AWSClient:
             logging.info(
                 "{}Updating tag on {} [{}] in region {}: changing {} from {} to {}".format(
                     self._dry_run_label,
-                    instance_name,
-                    instance_id,
+                    name,
+                    id,
                     self._region_name,
                     tag,
                     values["old"],
@@ -105,57 +180,58 @@ class AWSClient:
             # Later could either pass it in, or create an array of clients for regions
             # str(value) takes care of converting datetime.date to string in isoformat '2024-01-01'
             self.client.create_tags(
-                Resources=[instance_id],
+                Resources=[id],
                 Tags=formatted_tags,
             )
 
     def do_action(
         self,
         action: str,
-        instance_type: str,
-        instance_id: str,
-        instance_name: str,
+        type: str,
+        id: str,
+        name: str,
         **kwargs, # Ignore extra args
     ):
-        if action == "stop":
-            self.stop(
-                instance_id=instance_id,
-                instance_name=instance_name,
-            )
-        elif action == "terminate":
-            self.terminate(
-                instance_id=instance_id,
-                instance_name=instance_name,
-            )
+        if type == "ec2":
+            if action == "stop":
+                self.stop(
+                    id=id,
+                    name=name,
+                )
+            elif action == "terminate":
+                self.terminate(
+                    id=id,
+                    name=id,
+                )
 
     def stop(
         self,
-        instance_id: str,
-        instance_name: str,
+        id: str,
+        name: str,
     ):
         logging.info(
             "{}Stopping instance {} [{}] in region {}".format(
                 self._dry_run_label,
-                instance_name,
-                instance_id,
+                name,
+                id,
                 self._region_name,
             )
         )
         if not self._dry_run:
-            self.client.stop_instances(InstanceIds=[instance_id])
+            self.client.stop_instances(InstanceIds=[id])
 
     def terminate(
         self,
-        instance_id: str,
-        instance_name: str,
+        id: str,
+        name: str,
     ):
         logging.info(
             "{}Terminating instance {} [{}] in region {}".format(
                 self._dry_run_label,
-                instance_name,
-                instance_id,
+                name,
+                id,
                 self._region_name,
             )
         )
         if not self._dry_run:
-            self.client.terminate_instances(InstanceIds=[instance_id])
+            self.client.terminate_instances(InstanceIds=[id])

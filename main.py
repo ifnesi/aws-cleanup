@@ -154,6 +154,8 @@ if __name__ == "__main__":
             logging.info("Processing region {}".format(region))
 
             for instance_type, instance_config in instances_config.items():
+                state_map = instance_config.get("states")
+
                 aws_client = AWSClient(
                     region,
                     dry_run=args.dry_run,
@@ -163,40 +165,14 @@ if __name__ == "__main__":
                 )
 
                 logging.info("Retrieving {} instances from region {}".format(instance_type, region))
-                instances = aws_client.get_instances()
+                instances = aws_client.get_instances(tags_config=tags_config)
 
                 # https://confluentinc.atlassian.net/wiki/spaces/~457145999/pages/3318745562/Cloud+Spend+Reduction+Proposal+AWS+Solutions+Engineering+Account
                 for instance in instances:
-                    state = instance["State"]["Name"]
-
-                    instance_details = {
-                        "instance_type": instance_type,
-                        "instance_id": instance["InstanceId"],
-                        "region": region,
-                    }
 
                     logging.info(
-                        "Processing {state} {instance_type} instance {instance_id} in region {region}".format(
-                            state=state,
-                            instance_type=instance_type,
-                            instance_id=instance_details["instance_id"],
-                            region=region,
-                        )
+                        "Processing {state} {type} instance {id} in region {region}".format(**instance)
                     )
-
-                    if "Tags" not in instance:
-                        instance_tags = dict()
-                    else:
-                        instance_tags = {tag["Key"]: tag["Value"] for tag in instance["Tags"]}
-
-                    # Get tags matching any of the exception tags; if any exist, don't process.
-                    # returns a list of tuples; each tuple is ('tag', 'value')
-                    # using a list becuase it's ordered
-                    exceptions = [(e_tag, instance_tags.get(e_tag)) for e_tag in instance_config.get("exception_tags") if instance_tags.get(e_tag)]
-
-                    state_map = instance_config.get("states")
-
-                    instance_details["instance_name"] = instance_tags.get(tags_config.get("t_name"))
 
                     # 'dn_' means 'either a Datetime.date or None'
                     dn_notification = (
@@ -206,7 +182,7 @@ if __name__ == "__main__":
                         dn_notification.append(
                             [
                                 date_or_none(
-                                    instance_tags,
+                                    instance.tags,
                                     tag_name,
                                 ),
                                 days,
@@ -214,18 +190,10 @@ if __name__ == "__main__":
                             ]
                         )
 
-                    # Rough equivalent to coalesce
-                    instance_details["email"] = (
-                        instance_tags.get(tags_config.get("t_owner_email"))
-                        or instance_tags.get(tags_config.get("t_email"))
-                        or instance_tags.get(tags_config.get("t_divvy_owner"))
-                        or instance_tags.get(tags_config.get("t_divvy_last_modified_by"))
-                    )
-
                     # TODO: combine ASG and exception test
-                    if len(exceptions) == 0:
-                        if state in state_map:
-                            state_config = state_map[state]
+                    if len(instance.exceptions) == 0:
+                        if instance.state in state_map:
+                            state_config = state_map[instance.state]
                             action = state_config["action"]
                             action_tag = state_config["action_tag"]
                             complete_logs_tag = state_config["action_log_tag"]
@@ -236,7 +204,7 @@ if __name__ == "__main__":
 
                             # Current value of action date
                             action_current_date = date_or_none(
-                                instance_tags, action_tag
+                                instance.tags, action_tag
                             )
 
                             r = determine_action(
@@ -274,7 +242,7 @@ if __name__ == "__main__":
 
                                 aws_client.do_action(
                                     action=action,
-                                    **instance_details,
+                                    **instance,
                                 )
 
                                 tags_changed[complete_logs_tag] = {
@@ -338,17 +306,17 @@ if __name__ == "__main__":
                             
                             if(len(updated_tags) > 0):
                                 aws_client.update_tags(
-                                    **instance_details,
+                                    **instance,
                                     updated_tags=updated_tags,
                                 )
 
                             message_details = {
-                                **instance_details,
+                                **instance,
                                 "action": action,
                                 "tag": action_tag,
                                 "old_date": action_current_date,
                                 "new_date": r["odn_action_date"],
-                                "state": state,
+                                "state": instance.state,
                                 "result": r["result"],
                             }
 
@@ -376,13 +344,13 @@ if __name__ == "__main__":
                                 )
                         else:  # State not in state_map
                             message_details = {
-                                **instance_details,
+                                **instance,
                                 "action": "ignore",
-                                "tag": state,  # again, this is a hack
+                                "tag": instance.state,  # again, this is a hack
                                 "result": Result.IGNORE_OTHER_STATES,
                                 "old_date": d_run_date,
                                 "new_date": d_run_date,
-                                "state": state,
+                                "state": instance.state,
                             }
 
                             message_text = notify_messages_config.get(Result.IGNORE_OTHER_STATES).format(**message_details)
@@ -405,11 +373,11 @@ if __name__ == "__main__":
                         message_details = {
                             **instance_config,
                             "action": Result.SKIP_EXCEPTION,
-                            "tag": exceptions[0][0],  # See if this is right, I think this is wrong
+                            "tag": instance.exceptions[0][0],  # See if this is right, I think this is wrong
                             "result": Result.SKIP_EXCEPTION,
                             "old_date": d_run_date,
-                            "new_date": exceptions[0][1],
-                            "state": state,
+                            "new_date": instance.exceptions[0][1],
+                            "state": instance.state,
                         }
                         message_text = notify_messages_config.get(
                             Result.SKIP_EXCEPTION
@@ -428,41 +396,6 @@ if __name__ == "__main__":
                                 message_details["message"],
                             ),
                         )
-
-        # actions = ["ignore", "stop", "terminate"]
-        # for action in actions:
-        #     logging.info(
-        #         "{} List:".format(
-        #             action.upper(),
-        #         )
-        #     )
-        #     action_list = sorted(
-        #         [x for x in detailed_log if x["action"] == action],
-        #         key=sort_key,
-        #     )
-
-        #     for item in action_list:
-        #         logging.info(
-        #             json.dumps(
-        #                 item,
-        #                 indent=3,
-        #                 default=datetime_handler,
-        #             )
-        #         )
-        # # This is basically the list of items that weren't processed because they were in an unknown state
-        # logging.info("UNPROCESSED List:")
-        # action_list = sorted(
-        #     [x for x in detailed_log if x["action"] not in actions],
-        #     key=sort_key,
-        # )
-        # for item in action_list:
-        #     logging.info(
-        #         json.dumps(
-        #             item,
-        #             indent=3,
-        #             default=datetime_handler,
-        #         )
-        #     )
 
     except KeyboardInterrupt:
         logging.info("Aborted by user!")
