@@ -127,7 +127,7 @@ resource "aws_instance" "terminate_past_1_notifications_sent" {
   tags = merge({
     "owner_email"            = (var.owner_email)
     (local.t_terminate_date)      = local.d_p1
-    (local.t_notification_1) = local.d_p1
+    (local.t_terminate_notification_1) = local.d_p1
     "Name"                   = "terminate_past_1_notifications_sent"
     },
     var.additional_tags,
@@ -148,8 +148,8 @@ resource "aws_instance" "terminate_past_2_notifications_sent" {
   tags = merge({
     "owner_email"            = (var.owner_email)
     (local.t_terminate_date)      = local.d_p1
-    (local.t_notification_1) = local.d_p1
-    (local.t_notification_2) = local.d_p1
+    (local.t_terminate_notification_1) = local.d_p1
+    (local.t_terminate_notification_2) = local.d_p1
     "Name"                   = "terminate_past_2_notifications_sent"
     },
     var.additional_tags,
@@ -170,9 +170,9 @@ resource "aws_instance" "terminate_past_3_notifications_sent" {
   tags = merge({
     "owner_email"            = (var.owner_email)
     (local.t_terminate_date)      = local.d_p1
-    (local.t_notification_1) = local.d_p1
-    (local.t_notification_2) = local.d_p1
-    (local.t_notification_3) = local.d_p1
+    (local.t_terminate_notification_1) = local.d_p1
+    (local.t_terminate_notification_2) = local.d_p1
+    (local.t_terminate_notification_3) = local.d_p1
     "Name"                   = "terminate_past_3_notifications_sent"
     },
     var.additional_tags,
@@ -215,7 +215,7 @@ resource "aws_instance" "terminate_future_notification_2" {
   tags = merge({
     "owner_email"       = (var.owner_email)
     (local.t_terminate_date) = local.d_3
-    (local.t_notification_1) = local.d_p1
+    (local.t_terminate_notification_1) = local.d_p1
     "Name"              = "terminate_future_notification_2"
     },
     var.additional_tags,
@@ -236,8 +236,8 @@ resource "aws_instance" "terminate_future_notification_3" {
   tags = merge({
     "owner_email"            = (var.owner_email)
     (local.t_terminate_date)      = local.d_1
-    (local.t_notification_1) = local.d_p1
-    (local.t_notification_2) = local.d_p1
+    (local.t_terminate_notification_1) = local.d_p1
+    (local.t_terminate_notification_2) = local.d_p1
     "Name"                   = "terminate_future_notification_3"
     },
     var.additional_tags,
@@ -258,7 +258,7 @@ resource "aws_instance" "terminate_future_1_notifications_sent" {
   tags = merge({
     "owner_email"            = (var.owner_email)
     (local.t_terminate_date)      = local.d_8
-    (local.t_notification_1) = local.d_p1
+    (local.t_terminate_notification_1) = local.d_p1
     "Name"                   = "terminate_future_1_notifications_sent"
     },
     var.additional_tags,
@@ -279,8 +279,8 @@ resource "aws_instance" "terminate_future_2_notifications_sent" {
   tags = merge({
     "owner_email"            = (var.owner_email)
     (local.t_terminate_date)      = local.d_3
-    (local.t_notification_1) = local.d_p1
-    (local.t_notification_2) = local.d_p1
+    (local.t_terminate_notification_1) = local.d_p1
+    (local.t_terminate_notification_2) = local.d_p1
     "Name"                   = "terminate_future_2_notifications_sent"
     },
     var.additional_tags,
@@ -303,9 +303,9 @@ resource "aws_instance" "terminate_future_3_notifications_sent" {
   tags = merge({
     "owner_email"            = (var.owner_email)
     (local.t_terminate_date)      = local.d_1
-    (local.t_notification_1) = local.d_p1
-    (local.t_notification_2) = local.d_p1
-    (local.t_notification_3) = local.d_p1
+    (local.t_terminate_notification_1) = local.d_p1
+    (local.t_terminate_notification_2) = local.d_p1
+    (local.t_terminate_notification_3) = local.d_p1
     "Name"                   = "terminate_future_3_notifications_sent"
     },
     var.additional_tags,

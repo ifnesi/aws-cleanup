@@ -1,11 +1,11 @@
-override:
+global:
   # Run only against instances in a specific region, for testing
-  test_region_override:
+  target_regions:
     - us-east-1
     - us-east-2
 
   # Run only against instances matching specific tags
-  test_filter:
+  instance_filter:
       - Name: tag:aws_cleaner/filter
         Values:
           - justin
@@ -42,11 +42,11 @@ tags:
   # t_terminate_date: aws_cleaner/terminate_date
   # t_terminate_logs: aws_cleaner/terminate_notification_log
 
-  notifications:
-    # Important: Notifications will be desc sorted by value (days)
-    aws_cleaner/notifications/1: 15
-    aws_cleaner/notifications/2: 7
-    aws_cleaner/notifications/3: 2
+  # notifications:
+  #   # Important: Notifications will be desc sorted by value (days)
+  #   aws_cleaner/notifications/1: 15
+  #   aws_cleaner/notifications/2: 7
+  #   aws_cleaner/notifications/3: 2
 
 instances:
   ec2:
@@ -64,29 +64,27 @@ instances:
         action: "stop"
         default_days: 31
         max_days: 62
-        action_tag: aws_cleaner/stop_date
-        action_log_tag: aws_cleaner/stop_notification_log
+        action_tag: aws_cleaner/stop/date
+        action_log_tag: aws_cleaner/stop/log
         next_state: "stopped"
 
-        # This is not currently used
         notifications:
-          aws_cleaner/notifications/1: 15
-          aws_cleaner/notifications/2: 7
-          aws_cleaner/notifications/3: 2
+          aws_cleaner/stop/notifications/1: 15
+          aws_cleaner/stop/notifications/2: 7
+          aws_cleaner/stop/notifications/3: 2
 
       stopped:
         action: "terminate"
         default_days: 31
         max_days: 62
-        action_tag: aws_cleaner/terminate_date
-        action_log_tag: aws_cleaner/terminate_notification_log
+        action_tag: aws_cleaner/terminate/date
+        action_log_tag: aws_cleaner/terminate/log
         # next_state: null
 
-        # This is not currently used
         notifications:
-          aws_cleaner/notifications/1: 15
-          aws_cleaner/notifications/2: 7
-          aws_cleaner/notifications/3: 2
+          aws_cleaner/terminate/notifications/1: 15
+          aws_cleaner/terminate/notifications/2: 7
+          aws_cleaner/terminate/notifications/3: 2
 
 
 notify_messages:

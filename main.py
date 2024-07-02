@@ -78,7 +78,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--full",
-        help="Go through all AWS regions (if not set it will use YAML config `override.test_region_override`)",
+        help="Go through all AWS regions (if not set it will use YAML config `global.target_regions`)",
         action="store_true",
         dest="full",
     )
@@ -109,19 +109,11 @@ if __name__ == "__main__":
             config = yaml.safe_load(f)
 
         slack_config = config.get("slack", dict())
-        override_config = config.get("override", dict())
+        global_config = config.get("global", dict())
         instances_config = config.get("instances", dict())
         tags_config = config.get("tags", dict())
         notify_messages_config = config.get("notify_messages", dict())
-        test_region_override = override_config.get("test_region_override", list())
-
-        # Desc sort tags notifications by value (day)
-        tags_notifications_config = tags_config.get("notifications", dict())
-        tags_notifications = sorted(
-            tags_notifications_config.items(),
-            key=lambda n: n[1],
-            reverse=True,
-        )  # [(tag_name_1: days_1), (tag_name_2: days_2), ..., (tag_name_n: days_n)]
+        target_regions = global_config.get("target_regions", list())
 
         if args.run_date:
             d_run_date = args.run_date
@@ -141,7 +133,7 @@ if __name__ == "__main__":
 
         if not args.full:
             # use test region filter
-            regions = test_region_override
+            regions = target_regions
             logging.info("Using test regions")
         else:
             aws_client = AWSClient("us-east-1")
@@ -153,59 +145,80 @@ if __name__ == "__main__":
         for region in regions:
             logging.info("Processing region {}".format(region))
 
+            # Instance type is EC2, RDS, etc.
             for instance_type, instance_config in instances_config.items():
-                state_map = instance_config.get("states")
 
                 aws_client = AWSClient(
                     region,
                     dry_run=args.dry_run,
                     service_name=instance_type,
                     notify_messages_config=notify_messages_config,
-                    search_filter=override_config.get("test_filter"),
+                    search_filter=global_config.get("instance_filter"),
                 )
 
                 logging.info("Retrieving {} instances from region {}".format(instance_type, region))
                 instances = aws_client.get_instances(tags_config=tags_config)
 
-                # https://confluentinc.atlassian.net/wiki/spaces/~457145999/pages/3318745562/Cloud+Spend+Reduction+Proposal+AWS+Solutions+Engineering+Account
-                for instance in instances:
+                state_map = instance_config.get("states")
 
-                    logging.info(
-                        "Processing {state} {type} instance {id} in region {region}".format(**instance)
+                # States are started, stopped, scaled, etc.
+                for state in state_map:
+                    state_config = state_map[state]
+
+                    action = state_config["action"]
+                    action_tag = state_config["action_tag"]
+                    complete_logs_tag = state_config["action_log_tag"]
+                    action_default_days = state_config["default_days"]
+                    action_max_days = state_config["max_days"]
+
+                    next_state = state_config.get("next_state")
+
+                    state_notification_tags = state_config.get("notifications")
+                    # Results in list of tuples:
+                    # [
+                    #   ("aws_cleaner/notifications/1": 15),
+                    #   (tag_name_2: days_2),
+                    #   ...,
+                    #   (tag_name_n: days_n)
+                    # ]
+                    # (sorted by days, in descending order)
+                    state_notifications = sorted(
+                        state_notification_tags.items(),
+                        key=lambda n: n[1],
+                        reverse=True
                     )
 
-                    # 'dn_' means 'either a Datetime.date or None'
-                    dn_notification = (
-                        list()
-                    )  # [(tag_name_value_1, days_1, tag_name_1), (tag_name_value_2, days_2, tag_name_2), ..., (tag_name_value_n, days_n, tag_name_n)]
-                    for tag_name, days in tags_notifications:
-                        dn_notification.append(
-                            [
-                                date_or_none(
-                                    instance.tags,
-                                    tag_name,
-                                ),
-                                days,
-                                tag_name,
-                            ]
+                    state_instances = [instance for instance in instances if state == instance.state]
+
+                    # Process in order by state; exceptions are processed with their state rather than separate
+                    for instance in state_instances:
+
+                        logging.info(
+                            "Processing {state} {type} instance {id} in region {region}".format(**instance)
                         )
 
-                    # TODO: combine ASG and exception test
-                    if len(instance.exceptions) == 0:
-                        if instance.state in state_map:
-                            state_config = state_map[instance.state]
-                            action = state_config["action"]
-                            action_tag = state_config["action_tag"]
-                            complete_logs_tag = state_config["action_log_tag"]
-                            action_default_days = state_config["default_days"]
-                            action_max_days = state_config["max_days"]
-
-                            next_state = state_config.get("next_state")
+                        if len(instance.exceptions) == 0:
 
                             # Current value of action date
                             action_current_date = date_or_none(
                                 instance.tags, action_tag
                             )
+
+                            # Get value of each notification tag, if it is set (None otherwise)
+                            # [
+                            #   (Datetime.date(2024,07,01), 15, "aws_cleaner/notifications/1"),
+                            #   (Datetime.date(2024,07,05), 7, "aws_cleaner/notifications/2"),
+                            #   (Datetime.date(2024,07,10), 2, "aws_cleaner/notifications/3"),
+                            # ]
+                            dn_notification = list()
+                            for notification_tag, days in state_notifications:
+                                dn_notification.append([
+                                    date_or_none(
+                                        instance.tags, notification_tag
+                                    ),
+                                    days,
+                                    notification_tag,
+                                ])
 
                             r = determine_action(
                                 idn_action_date=action_current_date,
@@ -233,11 +246,12 @@ if __name__ == "__main__":
                                 # If we have a 'complete' action, do all of the following
                                 # (before tag updates and Slack notification)
                                 # * Perform the action (stop/terminate)
-                                # * Add an action complete log (including notifications)
-                                # * Clear individual notification tags
+                                # * Add an action complete log (including notifications) tag
+                                # * Clear individual notification tags?
                                 # * If there's a next action:
                                     # * Add a next action date tag - done
                                     # * Send a transition notification
+                                    # *  (set new state notification tags to None?) TODO
                                     # TODO: Right now the transition notification occurs before the complete notification; is this okay?
 
                                 aws_client.do_action(
@@ -256,15 +270,14 @@ if __name__ == "__main__":
                                     )
                                 }
 
-                                # Clear notification tags (set back to None)
-                                for n, notif in enumerate(dn_notification):
-                                    tags_changed[notif[2]] = {
-                                        "old": notif[0],
-                                        "new": None,
-                                    }
+                                # # Clear notification tags (set back to None)
+                                # for n, notif in enumerate(dn_notification):
+                                #     tags_changed[notif[2]] = {
+                                #         "old": notif[0],
+                                #         "new": None,
+                                #     }
                                 
                                 if next_state:
-
                                     next_state_config = state_map[next_state]
 
                                     tags_changed[next_state_config["action_tag"]] = {
@@ -342,18 +355,20 @@ if __name__ == "__main__":
                                     email = message_details["email"],
                                     text = message_details["message"],
                                 )
-                        else:  # State not in state_map
+
+                        else: # Exception list is not empty
                             message_details = {
-                                **instance,
-                                "action": "ignore",
-                                "tag": instance.state,  # again, this is a hack
-                                "result": Result.IGNORE_OTHER_STATES,
+                                **instance_config,
+                                "action": Result.SKIP_EXCEPTION,
+                                "tag": instance.exceptions[0][0],  # TODO verify this is right, I think this is wrong
+                                "result": Result.SKIP_EXCEPTION,
                                 "old_date": d_run_date,
-                                "new_date": d_run_date,
+                                "new_date": instance.exceptions[0][1],
                                 "state": instance.state,
                             }
-
-                            message_text = notify_messages_config.get(Result.IGNORE_OTHER_STATES).format(**message_details)
+                            message_text = notify_messages_config.get(
+                                Result.SKIP_EXCEPTION
+                            ).format(**message_details)
 
                             message_details["message"] = message_text
 
@@ -369,33 +384,32 @@ if __name__ == "__main__":
                                 ),
                             )
 
-                    else: # In ASG or has an exception (exception takes precedence for notification)
-                        message_details = {
-                            **instance_config,
-                            "action": Result.SKIP_EXCEPTION,
-                            "tag": instance.exceptions[0][0],  # See if this is right, I think this is wrong
-                            "result": Result.SKIP_EXCEPTION,
-                            "old_date": d_run_date,
-                            "new_date": instance.exceptions[0][1],
-                            "state": instance.state,
-                        }
-                        message_text = notify_messages_config.get(
-                            Result.SKIP_EXCEPTION
-                        ).format(**message_details)
+                for instance in [i for i in instances if i.state not in state_map]:
+                    message_details = {
+                        **instance,
+                        "action": "ignore",
+                        "tag": instance.state,  # again, this is a hack
+                        "result": Result.IGNORE_OTHER_STATES,
+                        "old_date": d_run_date,
+                        "new_date": d_run_date,
+                        "state": instance.state,
+                    }
 
-                        message_details["message"] = message_text
-                        
-                        # detailed_log.append(message_details)
-                        log_item(message_details)
+                    message_text = notify_messages_config.get(Result.IGNORE_OTHER_STATES).format(**message_details)
 
-                        slack_client.send_text(
-                            "{}{} [{}]: {}".format(
-                                "[DRY RUN] " if args.dry_run else "",
-                                message_details["email"],
-                                message_details["result"],
-                                message_details["message"],
-                            ),
-                        )
+                    message_details["message"] = message_text
+
+                    # detailed_log.append(message_details)
+                    log_item(message_details)
+
+                    slack_client.send_text(
+                        "{}{} [{}]: {}".format(
+                            "[DRY RUN] " if args.dry_run else "",
+                            message_details["email"],
+                            message_details["result"],
+                            message_details["message"],
+                        ),
+                    )
 
     except KeyboardInterrupt:
         logging.info("Aborted by user!")

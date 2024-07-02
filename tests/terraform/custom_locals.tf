@@ -11,12 +11,16 @@ locals {
   d_p1 = formatdate("YYYY-MM-DD", timeadd(timestamp(), "-24h"))
 
   t_exception      = "aws_cleaner/cleanup_exception"
-  t_stop_date      = "aws_cleaner/stop_date"
-  t_terminate_date = "aws_cleaner/terminate_date"
+  t_stop_date      = "aws_cleaner/stop/date"
+  t_terminate_date = "aws_cleaner/terminate/"
 
-  t_notification_1 = "aws_cleaner/notifications/1"
-  t_notification_2 = "aws_cleaner/notifications/2"
-  t_notification_3 = "aws_cleaner/notifications/3"
+  t_stop_notification_1 = "aws_cleaner/stop/notifications/1"
+  t_stop_notification_2 = "aws_cleaner/stop/notifications/2"
+  t_stop_notification_3 = "aws_cleaner/stop/notifications/3"
+
+  t_terminate_notification_1 = "aws_cleaner/terminate/notifications/1"
+  t_terminate_notification_2 = "aws_cleaner/terminate/notifications/2"
+  t_terminate_notification_3 = "aws_cleaner/terminate/notifications/3"
 
   subnet_id = var.subnet_id
 
