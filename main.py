@@ -358,7 +358,7 @@ if __name__ == "__main__":
 
                         else: # Exception list is not empty
                             message_details = {
-                                **instance_config,
+                                **instance,
                                 "action": Result.SKIP_EXCEPTION,
                                 "tag": instance.exceptions[0][0],  # TODO verify this is right, I think this is wrong
                                 "result": Result.SKIP_EXCEPTION,

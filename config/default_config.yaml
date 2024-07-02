@@ -50,15 +50,16 @@ tags:
 
 instances:
   ec2:
-    # tags:
-    #   t_email: email
-    #   t_name: Name
-    #   t_owner_email: owner_email
-    #   t_divvy_owner: divvy_owner
-    #   t_divvy_last_modified_by: divvy_last_modified_by
-    exception_tags:
-    - aws_cleaner/cleanup_exception
-    - aws:autoscaling:groupName
+    config:
+      tags:
+        t_email: email
+        t_name: Name
+        t_owner_email: owner_email
+        t_divvy_owner: divvy_owner
+        t_divvy_last_modified_by: divvy_last_modified_by
+      exceptions:
+      - aws_cleaner/cleanup_exception
+      - aws:autoscaling:groupName
     states:
       running:
         action: "stop"
