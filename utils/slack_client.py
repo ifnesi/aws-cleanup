@@ -101,7 +101,7 @@ class SlackClient:
 
         if user_id:
             return self.send_text(
-                text,
+                "{} [Details: <#{}>]".format(text, self.channel_id),
                 channel_id=user_id,
             )
 

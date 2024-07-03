@@ -18,9 +18,9 @@ locals {
   t_stop_notification_2 = "aws_cleaner/stop/notifications/2"
   t_stop_notification_3 = "aws_cleaner/stop/notifications/3"
 
-  t_terminate_notification_1 = "aws_cleaner/terminate/notifications/1"
-  t_terminate_notification_2 = "aws_cleaner/terminate/notifications/2"
-  t_terminate_notification_3 = "aws_cleaner/terminate/notifications/3"
+  t_terminate_notification_1 = "aws_cleaner/delete/notifications/1"
+  t_terminate_notification_2 = "aws_cleaner/delete/notifications/2"
+  t_terminate_notification_3 = "aws_cleaner/delete/notifications/3"
 
   subnet_id = var.subnet_id
 

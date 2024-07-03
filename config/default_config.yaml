@@ -1,65 +1,29 @@
 global:
-  # Run only against instances in a specific region, for testing
-  target_regions:
+  regions:
     - us-east-1
     - us-east-2
-
-  # Run only against instances matching specific tags
-  instance_filter:
-      - Name: tag:aws_cleaner/filter
-        Values:
-          - justin
-      # - Name: tag:Name
-      #   Values:
-      #     - stop_future_notification_1
-      #     - stop_future_notification_2
-      #     - stop_future_notification_3
+    - ap-southeast-1
 
 slack:
-  channel_key: channel_id
+  channel_key: test_channel_id
   token_secret_key: token
   token_secret_name: justin/slack_token
   token_secret_region: us-east-1
   chat_post_message_endpoint: https://slack.com/api/chat.postMessage
   user_lookup_endpoint: https://slack.com/api/users.lookupByEmail
 
-# general:
-#   max_stop_days: 62
-#   default_stop_days: 31
-#   max_terminate_days: 62
-#   default_terminate_days: 31
-
-tags:
-  t_email: email
-  t_name: Name
-  t_owner_email: owner_email
-  t_divvy_owner: divvy_owner
-  t_divvy_last_modified_by: divvy_last_modified_by
-  # t_autoscaling_group: aws:autoscaling:groupName
-  # t_exception: aws_cleaner/cleanup_exception
-  # t_stop_date: aws_cleaner/stop_date
-  # t_stop_logs: aws_cleaner/stop_notification_log
-  # t_terminate_date: aws_cleaner/terminate_date
-  # t_terminate_logs: aws_cleaner/terminate_notification_log
-
-  # notifications:
-  #   # Important: Notifications will be desc sorted by value (days)
-  #   aws_cleaner/notifications/1: 15
-  #   aws_cleaner/notifications/2: 7
-  #   aws_cleaner/notifications/3: 2
-
 instances:
   ec2:
+    enabled: true
     config:
-      tags:
-        t_email: email
-        t_name: Name
-        t_owner_email: owner_email
-        t_divvy_owner: divvy_owner
-        t_divvy_last_modified_by: divvy_last_modified_by
       exceptions:
-      - aws_cleaner/cleanup_exception
+      - aws_cleaner/exception
       - aws:autoscaling:groupName
+      filters:
+      - Name: tag:aws_cleaner/filter
+        Values:
+          - justin
+      # - aws_cleaner/filter: justin
     states:
       running:
         action: "stop"
@@ -87,16 +51,79 @@ instances:
           aws_cleaner/terminate/notifications/2: 7
           aws_cleaner/terminate/notifications/3: 2
 
+  rds:
+    enabled: true
+    config:
+      tags:
+        t_email: email
+        t_owner_email: owner_email
+        t_divvy_owner: divvy_owner
+        t_divvy_last_modified_by: divvy_last_modified_by
+        t_standalone_stopped: aws_cleaner/stop/log
+      exceptions:
+        - aws_cleaner/exception
+      filters:
+        # describe_db_instances doesn't support filters, so this is simulated
+        # semantics are slightly different; this is a full OR match
+        # i.e., if an instance has any of these key/value pairs, it matches
+        - Name: "tag:divvy_owner"
+          Values:
+            - jlee@confluent.io
+    states:
+      # RDS only supports "temporary stop" so running has these conditions:
+      # * Not part of a cluster (no DBClusterIdentifier)
+      # * DBInstanceStatus: available (no stop log)
+      # * No stop log (added when first temporarily stopped)
+      "standalone:available":
+        action: "stop"
+        default_days: 21
+        max_days: 62
+        action_tag: aws_cleaner/stop/date
+        action_log_tag: aws_cleaner/stop/log
+        next_state: "standalone:stopped"
+
+        notifications:
+          aws_cleaner/stop/notifications/1: 15
+          aws_cleaner/stop/notifications/2: 7
+          aws_cleaner/stop/notifications/3: 2
+
+      # Conditions
+      # * Not part of a cluster (no DBClusterIdentifier)
+      # * DBInstanceStatus: stopped, OR DBInstanceStatus: available with presence of stop log
+      "standalone:stopped":
+        action: "delete"
+        default_days: 14
+        max_days: 62
+        action_tag: aws_cleaner/delete/date
+        action_log_tag: aws_cleaner/delete/log
+        # next_state: null
+        
+        notifications:
+          aws_cleaner/delete/notifications/1: 15
+          aws_cleaner/delete/notifications/2: 7
+          aws_cleaner/delete/notifications/3: 2
+      
+      # Serverless are always part of a cluster
+
+# Possible tags to identify owner email
+email_tags:
+  - email
+  - owner_email
+  - owner
+  - divvy_owner
+  - divvy_last_modified_by
+  - Owner_Email
+  - Owner
 
 notify_messages:
-  ADD_ACTION_DATE: "Added {action} date to {state} {type} instance '{name}' [`{region}`/`{id}`], set to *{new_date}* (tag `[{tag}]`)"
-  RESET_ACTION_DATE: "Updating {state} {type} instance '{name}' [`{region}`/`{id}`]: {action} date changed from {old_date} to *{new_date}* (tag `[{tag}]`)"
-  COMPLETE_ACTION: "Completed {action} on {state} {type} instance '{name}' [`{region}`/`{id}`] (tag `[{tag}]`)"
-  TRANSITION_ACTION: "Initial notification: will {action} {state} {type} instance '{name}' [`{region}`/`{id}`] on *{new_date}* (tag `[{tag}]`)"
-  PAST_BUMP_NOTIFICATION: "Notification #__N__ for {state} {type} instance '{name}' [`{region}`/`{id}`]: will {action} on *{new_date}* (previously set to *{old_date}*) (tag `[{tag}]`)"
-  SEND_NOTIFICATION: "Notification #__N__ for {state} {type} instance '{name}' [`{region}`/`{id}`]: will {action} on *{new_date}* (tag `[{tag}]`)"
-  LOG_NO_NOTIFICATION: "Will {action} {state} {type} instance '{name}' [`{region}`/`{id}`] on *{new_date}* (tag `[{tag}]`)"
-  IGNORE_OTHER_STATES: "Ignoring {state} {type} {name} [`{region}`/`{id}`] because its state is {state}"
+  ADD_ACTION_DATE: "[`{region}` / `{type}`] Added {action} date to {state} {type} instance '{name}' [`{id}`], set to *{new_date}* (tag `[{tag}]`)"
+  RESET_ACTION_DATE: "[`{region}` / `{type}`] Updating {state} {type} instance '{name}' [`{id}`]: {action} date changed from {old_date} to *{new_date}* (tag `[{tag}]`)"
+  COMPLETE_ACTION: "[`{region}` / `{type}`] Completed {action} on {state} {type} instance '{name}' [`{id}`] (tag `[{tag}]`)"
+  TRANSITION_ACTION: "[`{region}` / `{type}`] Initial notification: will {action} newly {state} {type} instance '{name}' [`{id}`] on *{new_date}* (tag `[{tag}]`)"
+  PAST_BUMP_NOTIFICATION: "[`{region}` / `{type}`] Notification #__N__ for {state} {type} instance '{name}' [`{id}`]: will {action} on *{new_date}* (previously set to *{old_date}*) (tag `[{tag}]`)"
+  SEND_NOTIFICATION: "[`{region}` / `{type}`] Notification #__N__ for {state} {type} instance '{name}' [`{id}`]: will {action} on *{new_date}* (tag `[{tag}]`)"
+  LOG_NO_NOTIFICATION: "[`{region}` / `{type}`] Will {action} {state} {type} instance '{name}' [`{id}`] on *{new_date}* (tag `[{tag}]`)"
+  IGNORE_OTHER_STATES: "[`{region}` / `{type}`] Ignoring {state} {type} instance {name} [`{id}`] because its state is {state}"
   # Not currently passing in exception value, because it would require adding a different passed-in parameters to NOTIFY_MESSAGES
-  SKIP_EXCEPTION: "Skipping {state} {type} instance '{name}' [`{region}`/`{id}`] because it has {tag} set to {new_date}"
-  # IGNORE_ASG: "Ignoring {type} {name} [`{region}`/`{id}`] because it is in autoscaling group {tag}"
+  SKIP_EXCEPTION: "[`{region}` / `{type}`] Skipping {state} {type} instance '{name}' [`{id}`] because it has {tag} set to {new_date}"
+  # IGNORE_ASG: "Ignoring {type} {name} [`{id}`] because it is in autoscaling group {tag}"
