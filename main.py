@@ -39,7 +39,14 @@ from utils import (
     datetime_handler,
     log_item,
 )
-from utils.aws_client import AWSClient
+
+# from utils.aws.generic_instance import GenericInstance
+from utils.aws import *
+from utils.aws.aws_client import AWSClient
+from utils.aws.rds_client import RDSClient
+from utils.aws.ec2_client import EC2Client
+from utils.aws.asg_client import ASGClient
+# I don't know why I have to explicitly import ASGClient, but not RDSClient or EC2Client
 from utils.slack_client import SlackClient
 from utils.result import Result
 
@@ -141,7 +148,6 @@ if __name__ == "__main__":
 
         logging.info("Using regions: {}".format(", ".join(regions)))
 
-        # detailed_log = list()
         for region in regions:
             logging.info("Processing region {}".format(region))
 
@@ -151,14 +157,42 @@ if __name__ == "__main__":
                     logging.info("Retrieving {} instances from region {}".format(instance_type, region))
                     instance_config = type_config.get("config")
 
-                    aws_client = AWSClient(
-                        region,
-                        dry_run=args.dry_run,
-                        service_name=instance_type,
-                        notify_messages_config=notify_messages_config,
-                        email_tags=email_tags_config,
-                        # search_filter=global_config.get("instance_filter"),
-                    )
+                    if instance_type == 'ec2':
+                        aws_client = EC2Client(
+                            region,
+                            dry_run=args.dry_run,
+                            service_name=instance_type,
+                            notify_messages_config=notify_messages_config,
+                            email_tags=email_tags_config,
+                            # search_filter=global_config.get("instance_filter"),
+                        )
+                    elif instance_type == 'rds':
+                        aws_client = RDSClient(
+                            region,
+                            dry_run=args.dry_run,
+                            service_name=instance_type,
+                            notify_messages_config=notify_messages_config,
+                            email_tags=email_tags_config,
+                            # search_filter=global_config.get("instance_filter"),
+                        )
+                    elif instance_type == 'autoscaling':
+                        aws_client = ASGClient(
+                            region,
+                            dry_run=args.dry_run,
+                            service_name=instance_type,
+                            notify_messages_config=notify_messages_config,
+                            email_tags=email_tags_config,
+                            # search_filter=global_config.get("instance_filter"),
+                        )
+                    else:
+                        aws_client = AWSClient(
+                            region,
+                            dry_run=args.dry_run,
+                            service_name=instance_type,
+                            notify_messages_config=notify_messages_config,
+                            email_tags=email_tags_config,
+                            # search_filter=global_config.get("instance_filter"),
+                        )
 
                     instances = aws_client.get_instances(instance_config=instance_config)
 
@@ -405,7 +439,14 @@ if __name__ == "__main__":
                 else:
                     logging.info("Skipping {} instances in region {}".format(instance_type, region))
 
-                
+        # We won't send most stuff to Slack, but use this to validate that connection is okay and indicate the script is starting
+        end_text = (
+            "Finished running cleaner on {}".format(d_run_date)
+            if d_run_date == D_TODAY
+            else "Finished running cleaner on simulated run date of {}".format(d_run_date)
+        )
+        logging.info(end_text)
+        slack_client.send_text(end_text)
 
     except KeyboardInterrupt:
         logging.info("Aborted by user!")
