@@ -155,6 +155,7 @@ email_tags:
 notify_messages:
   ADD_ACTION_DATE: "[`{region}` / `{type}`] Added {action} date to {state} {type} instance '{name}' [`{id}`], set to *{new_date}* (tag `[{tag}]`)"
   RESET_ACTION_DATE: "[`{region}` / `{type}`] Updating {state} {type} instance '{name}' [`{id}`]: {action} date changed from {old_date} to *{new_date}* (tag `[{tag}]`)"
+  RESET_NOTIFICATIONS: "[`{region}` / `{type}`] Resetting notifications for {state} {type} instance '{name}' [`{id}`]: {action} date is set to *{new_date}* (tag `[{tag}]`)"
   COMPLETE_ACTION: "[`{region}` / `{type}`] Completed {action} on {state} {type} instance '{name}' [`{id}`] (tag `[{tag}]`)"
   TRANSITION_ACTION: "[`{region}` / `{type}`] Initial notification: will {action} newly {state} {type} instance '{name}' [`{id}`] on *{new_date}* (tag `[{tag}]`)"
   PAST_BUMP_NOTIFICATION: "[`{region}` / `{type}`] Notification #__N__ for {state} {type} instance '{name}' [`{id}`]: will {action} on *{new_date}* (previously set to *{old_date}*) (tag `[{tag}]`)"

@@ -44,7 +44,6 @@ def determine_action(
     - odn_notification_n: New dn_notification_n
     - odn_action_date
     - result: enum
-    - n: notification number (or -1 if not applicable)
     All actual changes (tags and/or instance modification) occurs in calling code, not here.
     """
     odn_notif = dict()
@@ -52,6 +51,24 @@ def determine_action(
     for n, notif in enumerate(idn_notification):
         odn_notif["odn_notification_{}".format(n + 1)] = notif[0]
         odn_notif_none["odn_notification_{}".format(n + 1)] = None
+    # idn_notification:
+    # [
+    #   (Datetime.date(2024,07,01), 15, "aws_cleaner/notifications/1"),
+    #   (Datetime.date(2024,07,05), 7, "aws_cleaner/notifications/2"),
+    #   (Datetime.date(2024,07,10), 2, "aws_cleaner/notifications/3"),
+    # ]
+    # odn_notif:
+    # {
+    #   'odn_notification_1': datetime.date(2024, 7, 1),
+    #   'odn_notification_2': datetime.date(2024, 7, 5),
+    #   'odn_notification_3': datetime.date(2024, 7, 10)
+    # }
+    # odn_notif_none
+    # {
+    #   'odn_notification_1': None,
+    #   'odn_notification_2': None,
+    #   'odn_notification_3': None
+    # }
 
     logging.debug(
         "idn_action_date:[{idn_action_date}], {idn_notifications}, i_default_days:[{i_default_days}], i_max_days:[{i_max_days}]".format(
@@ -102,7 +119,7 @@ def determine_action(
                     n - 1
                 ][0]
             if notif[0] is None:
-                # Bumpo and set stop date to today + N (missing notifications)
+                # Bump and set stop date to today + N (missing notifications)
                 # Kind of prefer using String `replace()` rather than passing back a variable just for this condition
                 return {
                     **odn_notif_aux,
@@ -126,8 +143,9 @@ def determine_action(
         }
 
     else:
+        # Action date is in the future, but not too far in the future
         remaining_days = idn_action_date - d_run_date
-        odn_notif_aux = dict(odn_notif_none)  # Make copy of dictionary
+        odn_notif_aux = dict(odn_notif_none)  # Make copy of none dictionary
         for n, notif in enumerate(idn_notification):
             odn_notif_aux[
                 "odn_notification_{}".format(
@@ -149,6 +167,15 @@ def determine_action(
                     ).replace("__N__", str(n + 1)),
                 }
 
+        if (remaining_days > datetime.timedelta(days = idn_notification[0][1])
+            and (len([notif for notif in idn_notification if notif[0] is not None]) > 0)):
+            # Reset notifications if there are any notifications but shouldn't be
+            return {
+                **odn_notif_none,
+                "odn_action_date": idn_action_date,
+                "result": Result.RESET_NOTIFICATIONS,
+                "message": notify_messages_config.get(Result.RESET_NOTIFICATIONS)
+            }
         # Result: Log without notification
         odn_notif_aux[
             "odn_notification_{}".format(len(idn_notification))

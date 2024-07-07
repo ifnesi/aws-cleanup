@@ -1,9 +1,9 @@
 # Test 'running' scenarios:
-# stop_missing_stop_date: Missing stop date, should add one
-# stop_malformed_stop_date: Malformed stop date, should add one
+# stop_missing_action_date: Missing stop date, should add one
+# stop_malformed_action_date: Malformed stop date, should add one
 
-# stop_future_stop_date_too_far: Future stop date too far in the future, should pull it in
-# stop_future_stop_date: Future stop date, should do nothing
+# stop_future_action_date_too_far: Future stop date too far in the future, should pull it in
+# stop_future_action_date: Future stop date, should do nothing
 
 # stop_past_0_notifications_sent: Stop date in the past, no notifications; should bump 3 days
 # stop_past_1_notifications_sent: Stop date in the past, 1 notifications; should bump 2 days

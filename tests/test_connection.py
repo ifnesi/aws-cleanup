@@ -20,8 +20,7 @@ import pytest
 import datetime
 
 from utils.slack_client import SlackClient
-from utils.aws_client import AWSClient
-
+from utils.aws import AWSClient
 
 def test_aws_connection():
     aws_client = AWSClient("us-east-1")

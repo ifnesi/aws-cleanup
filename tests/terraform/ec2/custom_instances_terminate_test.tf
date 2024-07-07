@@ -1,9 +1,9 @@
 # Test 'stopped' scenarios:
-# terminate_missing_terminate_date: Missing terminate date, should add one
-# terminate_malformed_terminate_date: Malformed terminate date, should add one
+# terminate_missing_action_date: Missing terminate date, should add one
+# terminate_malformed_action_date: Malformed terminate date, should add one
 
-# terminate_future_terminate_date_too_far: Future terminate date too far in the future, should pull it in
-# terminate_future_terminate_date: Future terminate date, should do nothing
+# terminate_future_action_date_too_far: Future terminate date too far in the future, should pull it in
+# terminate_future_action_date: Future terminate date, should do nothing
 
 # terminate_past_0_notifications_sent: terminate date in the past, no notifications; should bump 3 days
 # terminate_past_1_notifications_sent: terminate date in the past, 1 notifications; should bump 2 days
