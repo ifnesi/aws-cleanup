@@ -57,11 +57,22 @@ class SlackClient:
             )
         else:
             logging.debug(
-                "Using Slack token {}, and generic notification chanenl {}".format(
+                "Using Slack token {}, and generic notification channel {}".format(
                     self.token,
                     self.channel_id,
                 )
             )
+
+    def send_text_and_log(
+            self,
+            text: str,
+            channel_id: str = None,
+    ):
+        logging.info(text)
+        self.send_text(
+            text=text,
+            channel_id=channel_id,
+        )
 
     def send_text(
         self,

@@ -89,12 +89,6 @@ class ASGClient(AWSClient):
             else:
                 break
 
-        logging.info(
-            "Total {} instances found: {}".format(
-                self._service_name,
-                len(instances),
-            )
-        )
         return instances
 
     def update_tags(

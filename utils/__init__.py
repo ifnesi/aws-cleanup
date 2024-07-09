@@ -18,79 +18,68 @@
 import logging
 import json
 import datetime
+import collections
 from utils.result import Result
 
 
 def determine_action(
+    d_run_date: datetime,
     idn_action_date: datetime,
-    idn_notification: list,
     i_default_days: int,
     i_max_days: int,
+    idn_notification: dict,
     notify_messages_config: dict,
-    d_run_date: datetime,
 ):
     """
     Takes the following:
-    - idn_action_date: Currently set action date
-    - idn_notification: (list) Current dn_notification [(tag_name_value_1, days_1, tag_name_1), (tag_name_value_2, days_2, tag_name_2), ..., (tag_name_value_n, days_n, tag_name_n)]
-    - i_default_days: Default number of days
-    - i_max_days: Max number of days
-    - notify_messages_config: As per config (notify_messages)
-    - d_run_date: run date
+    - d_run_date (datetime.date): evaluation date
+    - idn_action_date (datetime.date): currently configured action date
+    - i_default_days: default number of days
+    - i_max_days: maximum number of days
+    - idn_notification: (dict > dict): mapping of notification tags to dict containing:
+        {
+            "old" (datetime.date): <current tag value>,
+            "days" (int): <number of days for notification>,
+        }
+    - notify_messages_config (dict > string): mapping of result types to message templates
     Returns dict with the following:
-    - odn_notification_1: New dn_notification_1
-    - odn_notification_2: New dn_notification_2
-    - ...
-    - odn_notification_n: New dn_notification_n
-    - odn_action_date
-    - result: enum
+    - odn_notification: (dict> dict): mapping of notification tags to dict containing:
+        {
+            "old" (datetime.date): <current tag value>,
+            "days" (int): <number of days for notification>,
+            "new" (datetime.date): <new tag value>,
+        }
+    - odn_action_date (datetime.date): new action date
+    - result: Result enum
     All actual changes (tags and/or instance modification) occurs in calling code, not here.
-    """
-    odn_notif = dict()
-    odn_notif_none = dict()
-    for n, notif in enumerate(idn_notification):
-        odn_notif["odn_notification_{}".format(n + 1)] = notif[0]
-        odn_notif_none["odn_notification_{}".format(n + 1)] = None
-    # idn_notification:
-    # [
-    #   (Datetime.date(2024,07,01), 15, "aws_cleaner/notifications/1"),
-    #   (Datetime.date(2024,07,05), 7, "aws_cleaner/notifications/2"),
-    #   (Datetime.date(2024,07,10), 2, "aws_cleaner/notifications/3"),
-    # ]
-    # odn_notif:
-    # {
-    #   'odn_notification_1': datetime.date(2024, 7, 1),
-    #   'odn_notification_2': datetime.date(2024, 7, 5),
-    #   'odn_notification_3': datetime.date(2024, 7, 10)
-    # }
-    # odn_notif_none
-    # {
-    #   'odn_notification_1': None,
-    #   'odn_notification_2': None,
-    #   'odn_notification_3': None
-    # }
 
-    logging.debug(
-        "idn_action_date:[{idn_action_date}], {idn_notifications}, i_default_days:[{i_default_days}], i_max_days:[{i_max_days}]".format(
-            idn_action_date=idn_action_date,
-            idn_notifications=", ".join(
-                [
-                    "{}:[{}]".format(
-                        key,
-                        value,
-                    )
-                    for key, value in odn_notif.items()
-                ]
-            ),
-            i_default_days=i_default_days,
-            i_max_days=i_max_days,
-        )
-    )
+    Sample `idn_notification`:
+    idn_notification = {
+        "aws_cleaner/terminate/notifications/1": {"old": datetime.date(2024, 7, 22),"days": 15},
+        "aws_cleaner/terminate/notifications/2": {"old": None, "days": 8},
+        "aws_cleaner/terminate/notifications/3": {"old": None, "days": 2}
+    }
+    """
+    # Sort by notification days (in descending order)
+    # Store in OrderedDict (not necessary in Python 3.7+, but used for clarity)
+    idn_xnotification = collections.OrderedDict(
+        sorted(idn_notification.items(),
+               key=lambda item: item[1]["days"],
+               reverse=True))
+
+    # Same as idn_notification, but with "new" set to None (used to reset notifications)
+    odn_xnotif_none = collections.OrderedDict()
+    # Same as idn_notification, but with "new" set to same value as "old" (no change)
+    odn_xnotif_same = collections.OrderedDict()
+
+    for k,v in idn_xnotification.items():
+        odn_xnotif_none[k] = v | {"new": None}
+        odn_xnotif_same[k] = v | {"new": v["old"]}
 
     if idn_action_date is None:
         # Result: Set Unset date
         return {
-            **odn_notif_none,
+            "odn_notification": odn_xnotif_none,
             "odn_action_date": d_run_date + datetime.timedelta(days=i_default_days),
             "result": Result.ADD_ACTION_DATE,
             "message": notify_messages_config.get(Result.ADD_ACTION_DATE),
@@ -99,67 +88,51 @@ def determine_action(
     elif idn_action_date - d_run_date > datetime.timedelta(days=i_max_days):
         # Result: Set date to max
         return {
-            **odn_notif_none,
+            "odn_notification": odn_xnotif_none,
             "odn_action_date": d_run_date + datetime.timedelta(days=i_max_days),
             "result": Result.RESET_ACTION_DATE,
             "message": notify_messages_config.get(Result.RESET_ACTION_DATE),
         }
 
     elif idn_action_date <= d_run_date:
-        max_notif_days = len(idn_notification)
-        odn_notif_aux = dict(odn_notif_none)  # Make copy of dictionary
-        for n, notif in enumerate(idn_notification):
-            odn_notif_aux[
-                "odn_notification_{}".format(
-                    n + 1,
-                )
-            ] = d_run_date
-            if n > 0:
-                odn_notif_aux["odn_notification_{}".format(n)] = idn_notification[
-                    n - 1
-                ][0]
-            if notif[0] is None:
-                # Bump and set stop date to today + N (missing notifications)
-                # Kind of prefer using String `replace()` rather than passing back a variable just for this condition
-                return {
-                    **odn_notif_aux,
-                    "odn_action_date": d_run_date
-                    + datetime.timedelta(days=max_notif_days - n),
-                    "result": Result.PAST_BUMP_NOTIFICATION,
-                    "message": notify_messages_config.get(
-                        Result.PAST_BUMP_NOTIFICATION
-                    ).replace("__N__", str(n + 1)),
-                }
+        # Action date in the past: one of two actions:
+        # If we're missing a notification, notify and bump action date
+        # Otherwise, complete action
+        notifications_sent = len([v["old"] for k,v in idn_xnotification.items() if v["old"] is not None])
+        if notifications_sent < len(idn_xnotification):
+            # Take 'same' result and update "new" to new value
+            # Note: as of Python 3.7, dictionaries _are_ ordered.
+            odn_xnotif_same[list(idn_xnotification)[notifications_sent]]["new"] = d_run_date
 
-        # Result: Complete action
-        odn_notif_aux[
-            "odn_notification_{}".format(len(idn_notification))
-        ] = idn_notification[-1][0]
+            # Bump action date by number of missing notifications
+            return {
+                "odn_notification": odn_xnotif_same,
+                "odn_action_date": d_run_date
+                + datetime.timedelta(days=len(idn_xnotification) - notifications_sent),
+                "result": Result.PAST_BUMP_NOTIFICATION,
+                "message": notify_messages_config.get(
+                    Result.PAST_BUMP_NOTIFICATION
+                ).replace("__N__", str(notifications_sent + 1)),
+            }
         return {
-            **odn_notif_aux,
+            "odn_notification": odn_xnotif_same,
             "odn_action_date": d_run_date,
             "result": Result.COMPLETE_ACTION,
             "message": notify_messages_config.get(Result.COMPLETE_ACTION),
         }
 
     else:
-        # Action date is in the future, but not too far in the future
-        remaining_days = idn_action_date - d_run_date
-        odn_notif_aux = dict(odn_notif_none)  # Make copy of none dictionary
-        for n, notif in enumerate(idn_notification):
-            odn_notif_aux[
-                "odn_notification_{}".format(
-                    n + 1,
-                )
-            ] = d_run_date
-            if n > 0:
-                odn_notif_aux["odn_notification_{}".format(n)] = idn_notification[
-                    n - 1
-                ][0]
-            if notif[0] is None and remaining_days <= datetime.timedelta(days=notif[1]):
-                # Result: Send nth notification
+        # Action date is in the future, but not too far in the future, three potential options:
+        # * Send regular notification (if in notification period)
+        # * Reset notifications (if notifications have been sent, but date has manually been pushed back)
+        # * No notification
+
+        # For each notification, notification date is action date - # of days (notify if past this date)
+        for n,(tag,config) in enumerate(idn_xnotification.items()):
+            if config["old"] is None and d_run_date > idn_action_date - datetime.timedelta(config["days"]):
+                odn_xnotif_same[tag]["new"] = d_run_date
                 return {
-                    **odn_notif_aux,
+                    "odn_notification": odn_xnotif_same,
                     "odn_action_date": idn_action_date,
                     "result": Result.SEND_NOTIFICATION,
                     "message": notify_messages_config.get(
@@ -167,21 +140,22 @@ def determine_action(
                     ).replace("__N__", str(n + 1)),
                 }
 
-        if (remaining_days > datetime.timedelta(days = idn_notification[0][1])
-            and (len([notif for notif in idn_notification if notif[0] is not None]) > 0)):
+        remaining_days = idn_action_date - d_run_date
+        first_notification = list(idn_xnotification.values())[0]["days"]
+        if (remaining_days > datetime.timedelta(days = first_notification)
+            and (len([c for c in idn_xnotification.values() if c["old"] is not None]) > 0)):
             # Reset notifications if there are any notifications but shouldn't be
             return {
-                **odn_notif_none,
+                "odn_notification": odn_xnotif_none,
                 "odn_action_date": idn_action_date,
                 "result": Result.RESET_NOTIFICATIONS,
                 "message": notify_messages_config.get(Result.RESET_NOTIFICATIONS)
             }
+        
+        
         # Result: Log without notification
-        odn_notif_aux[
-            "odn_notification_{}".format(len(idn_notification))
-        ] = idn_notification[-1][0]
         return {
-            **odn_notif_aux,
+            "odn_notification": odn_xnotif_same,
             "odn_action_date": idn_action_date,
             "result": Result.LOG_NO_NOTIFICATION,
             "message": notify_messages_config.get(Result.LOG_NO_NOTIFICATION),
@@ -199,24 +173,24 @@ def iso_format(date: str):
     return result
 
 
-# Arbitrary sort order, primarily for cleanliness in output:
-# * Email
-# * Type
-# * Region
-# * Action
-# * Result
-# * Name
-def sort_key(x):
-    return " ".join(
-        [
-            x["email"],
-            x["instance_type"],
-            x["region"],
-            x["action"],
-            x["result"],
-            x["instance_name"],
-        ]
-    )
+# # Arbitrary sort order, primarily for cleanliness in output:
+# # * Email
+# # * Type
+# # * Region
+# # * Action
+# # * Result
+# # * Name
+# def sort_key(x):
+#     return " ".join(
+#         [
+#             x["email"],
+#             x["instance_type"],
+#             x["region"],
+#             x["action"],
+#             x["result"],
+#             x["instance_name"],
+#         ]
+#     )
 
 
 def date_or_none(
