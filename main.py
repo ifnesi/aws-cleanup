@@ -109,7 +109,7 @@ if __name__ == "__main__":
             config = yaml.safe_load(f)
 
         slack_config = config.get("slack", dict())
-        global_config = config.get("global", dict())
+        global_config = config.get("global", dict()) or dict()
         instances_config = config.get("instances", dict())
         tags_config = config.get("tags", dict())
         notify_messages_config = config.get("notify_messages", dict())
@@ -144,7 +144,10 @@ if __name__ == "__main__":
         slack_client.send_text_and_log("Using regions: {}".format(", ".join(regions)))
 
         for region in regions:
-            slack_client.send_text_and_log("Processing region {}".format(region))
+            slack_client.send_text_and_log("Processing {} in region {}".format(
+                ", ".join([instance_type for instance_type, type_config in instances_config.items() if type_config.get("enabled")]),
+                region,
+                ))
 
             # Instance type is EC2, RDS, etc.
             for instance_type, type_config in instances_config.items():

@@ -19,6 +19,7 @@ import json
 import boto3
 import logging
 import requests
+import time
 
 
 class SlackClient:
@@ -30,8 +31,9 @@ class SlackClient:
         self.channel_id = None
         self.user_map = dict()
         self._slack_config = slack_config
-        self._url_dm = slack_config.get("user_lookup_endpoint")
-        self._url_text = slack_config.get("chat_post_message_endpoint")
+        self._url_user_lookup = slack_config.get("user_lookup_endpoint")
+        self._url_post_message = slack_config.get("chat_post_message_endpoint")
+        self.tick = time.time_ns()
         aws_secret_client = boto3.client(
             service_name="secretsmanager",
             region_name=slack_config.get("token_secret_region"),
@@ -63,6 +65,17 @@ class SlackClient:
                 )
             )
 
+    def rate_limit(
+            self
+    ):
+        time_now = time.time_ns()
+        tick_diff = (time_now - self.tick)/1000000000
+        if tick_diff < 1:
+            logging.info("time.sleep({})".format(tick_diff))
+            time.sleep(tick_diff)
+            time_now = time.time_ns()
+        self.tick = time_now
+
     def send_text_and_log(
             self,
             text: str,
@@ -79,8 +92,9 @@ class SlackClient:
         text: str,
         channel_id: str = None,  # will default to self.channel_id if None
     ):
+        self.rate_limit()
         response = requests.post(
-            url=self._url_text,
+            url=self._url_post_message,
             headers=self.headers,
             json={
                 "channel": self.channel_id if channel_id is None else channel_id,
@@ -96,9 +110,10 @@ class SlackClient:
         email: str,
     ):
         user_id = self.user_map.get(email)
+        # Get User ID
         if not user_id:
             r = requests.post(
-                url=self._url_dm,
+                url=self._url_user_lookup,
                 headers=self.headers,
                 # User lookup doesn't support json, has to be data
                 data={
