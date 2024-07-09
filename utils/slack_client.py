@@ -71,7 +71,7 @@ class SlackClient:
         time_now = time.time_ns()
         tick_diff = (time_now - self.tick)/1000000000
         if tick_diff < 1:
-            logging.info("time.sleep({})".format(tick_diff))
+            logging.debug("time.sleep({})".format(tick_diff))
             time.sleep(tick_diff)
             time_now = time.time_ns()
         self.tick = time_now
