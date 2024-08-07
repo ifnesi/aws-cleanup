@@ -132,7 +132,7 @@ if __name__ == "__main__":
             if d_run_date == D_TODAY
             else "Running cleaner on simulated run date of {}".format(d_run_date)
         )
-        slack_client.send_text_and_log(start_text)
+        slack_client.dlog_and_send_text(start_text)
 
         if regions:
             # use test region filter
@@ -141,10 +141,10 @@ if __name__ == "__main__":
             aws_client = AWSClient("us-east-1")
             regions = aws_client.get_regions()
 
-        slack_client.send_text_and_log("Using regions: {}".format(", ".join(regions)))
+        slack_client.dlog_and_send_text("Using regions: {}".format(", ".join(regions)))
 
         for region in regions:
-            slack_client.send_text_and_log("Processing {} in region {}".format(
+            slack_client.dlog_and_send_text("Processing {} in region {}".format(
                 ", ".join([instance_type for instance_type, type_config in instances_config.items() if type_config.get("enabled")]),
                 region,
                 ))
@@ -152,7 +152,7 @@ if __name__ == "__main__":
             # Instance type is EC2, RDS, etc.
             for instance_type, type_config in instances_config.items():
                 if type_config.get("enabled"):
-                    slack_client.send_text_and_log("Retrieving {} instances from region {}".format(instance_type, region))
+                    slack_client.dlog_and_send_text("Retrieving {} instances from region {}".format(instance_type, region))
                     instance_config = type_config.get("config")
 
                     if instance_type == 'ec2':
@@ -224,11 +224,11 @@ if __name__ == "__main__":
                         )
                     )
 
-                    slack_client.send_text_and_log(total_text)
+                    slack_client.dlog_and_send_text(total_text)
                     if len(included) > 0:
-                        slack_client.send_text_and_log(included_text)
+                        slack_client.dlog_and_send_text(included_text)
                     if len(excluded) > 0:
-                        slack_client.send_text_and_log(excluded_text)
+                        slack_client.dlog_and_send_text(excluded_text)
 
                     # States are started, stopped, scaled, etc.
                     for state in state_map:
@@ -383,6 +383,7 @@ if __name__ == "__main__":
                                         message_details["result"],
                                         message_details["message"],
                                     ),
+                                    log=message_details["result"] in (Result.LOG_NO_NOTIFICATION, Result.SKIP_EXCEPTION),
                                 )
 
                                 if message_details["email"] and message_details["result"] not in (
@@ -438,6 +439,7 @@ if __name__ == "__main__":
                                         message_details["result"],
                                         message_details["message"],
                                     ),
+                                    log=message_details["result"] in (Result.LOG_NO_NOTIFICATION, Result.SKIP_EXCEPTION),
                                 )
 
                     for instance in [i for i in instances if i.state not in state_map]:
@@ -465,6 +467,7 @@ if __name__ == "__main__":
                                 message_details["result"],
                                 message_details["message"],
                             ),
+                            log=message_details["result"] in (Result.LOG_NO_NOTIFICATION, Result.SKIP_EXCEPTION),
                         )
                 else:
                     logging.info("Skipping {} instances in region {}".format(instance_type, region))
@@ -475,7 +478,7 @@ if __name__ == "__main__":
             if d_run_date == D_TODAY
             else "Finished running cleaner on simulated run date of {}".format(d_run_date)
         )
-        slack_client.send_text_and_log(end_text)
+        slack_client.dlog_and_send_text(end_text)
 
     except KeyboardInterrupt:
         logging.info("Aborted by user!")

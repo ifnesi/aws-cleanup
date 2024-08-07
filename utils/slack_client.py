@@ -48,6 +48,9 @@ class SlackClient:
             self.channel_id = json.loads(
                 get_secret_value_response.get("SecretString")
             ).get(slack_config.get("channel_key"))
+            self.log_channel_id = json.loads(
+                get_secret_value_response.get("SecretString")
+            ).get(slack_config.get("log_channel_key"))
             self.headers = {"Authorization": "Bearer {}".format(self.token)}
         except:
             logging.error(
@@ -76,28 +79,40 @@ class SlackClient:
             time_now = time.time_ns()
         self.tick = time_now
 
-    def send_text_and_log(
-            self,
-            text: str,
-            channel_id: str = None,
+    def dlog_and_send_text(
+        self,
+        text: str,
+        log: bool = False,
+        channel_id: str = None,
     ):
         logging.info(text)
         self.send_text(
             text=text,
             channel_id=channel_id,
         )
+        self.send_text(
+            text=text,
+            channel_id=channel_id,
+            log=True,
+        )
 
     def send_text(
         self,
         text: str,
+        log: bool = False,
         channel_id: str = None,  # will default to self.channel_id if None
     ):
+        # Channel precedence:
+        # If channel_id is provided, use that (i.e. direct message)
+        # Otherwise, if log, use self.log_channel_id (logging channel)
+        # Otherwise, use self.channel_id (primary channel)
         self.rate_limit()
         response = requests.post(
             url=self._url_post_message,
             headers=self.headers,
             json={
-                "channel": self.channel_id if channel_id is None else channel_id,
+                # "channel": self.channel_id if channel_id is None else channel_id,
+                "channel": channel_id or (self.log_channel_id if log else self.channel_id),
                 "text": text,
             },
         )

@@ -1,13 +1,13 @@
 global:
-  # regions:
-  #   - us-east-1
+  regions:
+    - us-east-1
   #   - us-east-2
   #   - ap-southeast-1
 
 slack:
-  channel_key: channel_id
+  # channel_key: channel_id
+  channel_key: test_channel_id
   log_channel_key: log_channel_id
-  # channel_key: test_channel_id
   token_secret_key: token
   token_secret_name: justin/slack_token
   token_secret_region: us-east-1
@@ -22,9 +22,9 @@ instances:
       - aws_cleaner/exception
       - aws:autoscaling:groupName
       filters:
-      # - Name: tag:aws_cleaner/filter
-      #   Values:
-      #     - justin
+      - Name: tag:aws_cleaner/filter
+        Values:
+          - justin
     states:
       running:
         action: "stop"
