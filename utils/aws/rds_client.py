@@ -31,7 +31,7 @@ class RDSClient(AWSClient):
         }
         tags_config = instance_config.get("tags")
         exceptions_config = instance_config.get("exceptions") or list()
-        filters = instance_config.get("filters")
+        filters = instance_config.get("filters") or list()
         while True:
             describe_db_instances = self.client.describe_db_instances(**params)
             for instance in describe_db_instances.get("DBInstances", list()):
@@ -154,7 +154,7 @@ class RDSClient(AWSClient):
         if not self._dry_run:
             self.client.stop_db_instance(
                 DBInstanceIdentifier=name,
-                DBSnapshotIdentifier="{}-stop-snapshot-{}".format(name,datetime.date.today()),
+                DBSnapshotIdentifier="{}-stop-{}".format(name,datetime.date.today()),
             )
 
     def delete(
@@ -172,15 +172,15 @@ class RDSClient(AWSClient):
         )
         print("{}-delete-snapshot-{}".format(
                     name,
-                    datetime.datetime.now().isoformat(timespec='seconds').replace(":","")
+                    datetime.date.today(),
                 )[:63])
         if not self._dry_run:
             self.client.delete_db_instance(
                 DBInstanceIdentifier=name,
                 SkipFinalSnapshot=False,
-                FinalDBSnapshotIdentifier="{}-delete-snapshot-{}".format(
+                FinalDBSnapshotIdentifier="{}-delete-{}".format(
                     name,
-                    datetime.datetime.now().isoformat(timespec='seconds').replace(":","")
+                    datetime.date.today(),
                 )[:63],
                 DeleteAutomatedBackups=False,
             )

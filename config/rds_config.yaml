@@ -5,8 +5,8 @@ global:
   #   - ap-southeast-1
 
 slack:
-  channel_key: channel_id
-  log_channel_key: log_channel_id
+  channel_key: test_channel_id
+  log_channel_key: test_channel_id
   # channel_key: test_channel_id
   token_secret_key: token
   token_secret_name: justin/slack_token
@@ -16,7 +16,7 @@ slack:
 
 instances:
   ec2:
-    enabled: true
+    enabled: false
     config:
       exceptions:
       - aws_cleaner/exception
