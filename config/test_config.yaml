@@ -7,7 +7,7 @@ global:
 slack:
   # channel_key: channel_id
   channel_key: test_channel_id
-  log_channel_key: log_channel_id
+  log_channel_key: test_channel_id
   token_secret_key: token
   token_secret_name: justin/slack_token
   token_secret_region: us-east-1
@@ -21,10 +21,6 @@ instances:
       exceptions:
       - aws_cleaner/exception
       - aws:autoscaling:groupName
-      filters:
-      - Name: tag:aws_cleaner/filter
-        Values:
-          - justin
     states:
       running:
         action: "stop"

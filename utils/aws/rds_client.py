@@ -175,12 +175,21 @@ class RDSClient(AWSClient):
                     datetime.date.today(),
                 )[:63])
         if not self._dry_run:
-            self.client.delete_db_instance(
-                DBInstanceIdentifier=name,
-                SkipFinalSnapshot=False,
-                FinalDBSnapshotIdentifier="{}-delete-{}".format(
-                    name,
-                    datetime.date.today(),
-                )[:63],
-                DeleteAutomatedBackups=False,
-            )
+            try:
+                self.client.delete_db_instance(
+                    DBInstanceIdentifier=name,
+                    SkipFinalSnapshot=False,
+                    FinalDBSnapshotIdentifier="{}-delete-{}".format(
+                        name,
+                        datetime.date.today(),
+                    )[:63],
+                    DeleteAutomatedBackups=False,
+                )
+            except:
+                logging.info(
+                    "Exception terminating rds instance {} [{}] in region {}".format(
+                        name,
+                        id,
+                        self._region_name,
+                    )
+                )

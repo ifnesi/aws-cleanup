@@ -150,7 +150,6 @@ class EC2Client(AWSClient):
             except:
                 logging.info(
                     "Exception terminating ec2 instance {} [{}] in region {}".format(
-                        self._dry_run_label,
                         name,
                         id,
                         self._region_name,
