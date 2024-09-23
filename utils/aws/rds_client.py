@@ -152,10 +152,19 @@ class RDSClient(AWSClient):
             )
         )
         if not self._dry_run:
-            self.client.stop_db_instance(
-                DBInstanceIdentifier=name,
-                DBSnapshotIdentifier="{}-stop-{}".format(name,datetime.date.today()),
-            )
+            try:
+                self.client.stop_db_instance(
+                    DBInstanceIdentifier=name,
+                    DBSnapshotIdentifier="{}-stop-{}".format(name,datetime.date.today()),
+                )
+            except:
+                logging.info(
+                    "Exception stopping ec2 instance {} [{}] in region {}".format(
+                        name,
+                        id,
+                        self._region_name,
+                    )
+                )
 
     def delete(
         self,
