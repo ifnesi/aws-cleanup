@@ -159,7 +159,7 @@ class RDSClient(AWSClient):
                 )
             except:
                 logging.info(
-                    "Exception stopping ec2 instance {} [{}] in region {}".format(
+                    "Exception stopping rds instance {} [{}] in region {}".format(
                         name,
                         id,
                         self._region_name,
