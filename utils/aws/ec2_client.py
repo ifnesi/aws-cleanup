@@ -129,7 +129,16 @@ class EC2Client(AWSClient):
             )
         )
         if not self._dry_run:
-            self.client.stop_instances(InstanceIds=[id])
+            try:
+                self.client.stop_instances(InstanceIds=[id])
+            except:
+                logging.info(
+                    "Exception stopping ec2 instance {} [{}] in region {}".format(
+                        name,
+                        id,
+                        self._region_name,
+                    )
+                )
     
     def terminate(
         self,
