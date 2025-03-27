@@ -71,6 +71,7 @@ if __name__ == "__main__":
             print("{};{};{};{};{}".format(
                 region,
                 cluster_detail.get("name"),
+                cluster_detail.get("version"),
                 cluster_detail.get("createdAt"),
                 cluster_detail.get("resourcesVpcConfig").get("vpcId"),
                 cluster_detail.get("tags"),
