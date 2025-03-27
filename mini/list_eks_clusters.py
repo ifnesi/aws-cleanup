@@ -68,7 +68,7 @@ if __name__ == "__main__":
             ).get("cluster")
 
             # print(json.dumps(cluster_detail, default=str, indent=4))
-            print("{};{};{};{};{}".format(
+            print("{};{};{};{};{};{}".format(
                 region,
                 cluster_detail.get("name"),
                 cluster_detail.get("version"),
