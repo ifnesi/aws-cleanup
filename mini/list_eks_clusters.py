@@ -81,4 +81,3 @@ if __name__ == "__main__":
             # print(cluster_detail.get("createdAt"))
             # print(cluster_detail.get("resourcesVpcConfig").get("vpcId"))
             # print(cluster_detail.get("tags"))
-            print("")
