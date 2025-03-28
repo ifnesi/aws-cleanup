@@ -33,24 +33,11 @@ import boto3
 import time
 
 if __name__ == "__main__":
-
-    # parser = argparse.ArgumentParser(description="EKS Deleter")
-    # parser.add_argument(
-    #     "--region",
-    #     help="Specify region to use",
-    #     default = "us-east-2",
-    #     dest="region",
-    # )
-
-    # args = parser.parse_args()
-
     region_client = boto3.client(
         service_name = "ec2"
     )
 
     regions = [region.get("RegionName") for region in region_client.describe_regions().get("Regions")]
-
-    # print(regions)
 
     for region in regions:
 
@@ -60,14 +47,12 @@ if __name__ == "__main__":
         )
 
         clusters = c.list_clusters().get("clusters")
-        # print(clusters)
 
         for cluster in clusters:
             cluster_detail = c.describe_cluster(
                 name = cluster,
             ).get("cluster")
 
-            # print(json.dumps(cluster_detail, default=str, indent=4))
             print("{};{};{};{};{};{}".format(
                 region,
                 cluster_detail.get("name"),
@@ -76,8 +61,3 @@ if __name__ == "__main__":
                 cluster_detail.get("resourcesVpcConfig").get("vpcId"),
                 cluster_detail.get("tags"),
             ))
-            # print(region)
-            # print(cluster_detail.get("name"))
-            # print(cluster_detail.get("createdAt"))
-            # print(cluster_detail.get("resourcesVpcConfig").get("vpcId"))
-            # print(cluster_detail.get("tags"))
