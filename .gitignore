@@ -6,3 +6,7 @@ __pycache__/
 .terraform*
 terraform.tfstate*
 terraform.tfvars
+# pyenv stuff
+pyvenv.cfg
+bin
+lib
