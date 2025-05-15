@@ -91,10 +91,19 @@ class EC2Client(AWSClient):
             # This is super sloppy; right now we're relying on the fact that this is called after ec2_client has created for the relevant region
             # Later could either pass it in, or create an array of clients for regions
             # str(value) takes care of converting datetime.date to string in isoformat '2024-01-01'
-            self.client.create_tags(
-                Resources=[id],
-                Tags=formatted_tags,
-            )
+            try:
+              self.client.create_tags(
+                  Resources=[id],
+                  Tags=formatted_tags,
+              )
+            except:
+              logging.info(
+                  "Exception tagging ec2 instance {} [{}] in region {}".format(
+                      name,
+                      id,
+                      self._region_name,
+                  )
+              )
 
     def do_action(
         self,
